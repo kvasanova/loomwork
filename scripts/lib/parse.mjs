@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { DEFAULT_CONFIG } from './config.mjs';
 
 const DATE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}-/;
 const DONE_BANNER_RE = /^>\s*\*\*Status:\s*DONE/i;
@@ -59,18 +60,18 @@ export function readPlan(relPath, repoRoot) {
   };
 }
 
-export function listSpecs(repoRoot) {
-  const dir = path.join(repoRoot, 'docs/superpowers/specs');
+export function listSpecs(repoRoot, specsDir = DEFAULT_CONFIG.specsDir) {
+  const dir = path.join(repoRoot, specsDir);
   return fs
     .readdirSync(dir)
     .filter((f) => f.endsWith('.md'))
-    .map((f) => `docs/superpowers/specs/${f}`);
+    .map((f) => `${specsDir}/${f}`);
 }
 
-export function listPlans(repoRoot) {
-  const dir = path.join(repoRoot, 'docs/superpowers/plans');
+export function listPlans(repoRoot, plansDir = DEFAULT_CONFIG.plansDir) {
+  const dir = path.join(repoRoot, plansDir);
   return fs
     .readdirSync(dir)
     .filter((f) => f.endsWith('.md'))
-    .map((f) => `docs/superpowers/plans/${f}`);
+    .map((f) => `${plansDir}/${f}`);
 }

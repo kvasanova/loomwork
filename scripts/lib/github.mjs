@@ -1,28 +1,34 @@
 import { execFileSync } from 'node:child_process';
 
-function ghJson(args) {
-  const out = execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+function ghJson(args, repoRoot) {
+  const out = execFileSync('gh', args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: repoRoot,
+  });
   return JSON.parse(out);
 }
 
-export function detectRepo() {
+export function detectRepo(repoRoot) {
   try {
-    const out = execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], {
-      encoding: 'utf8',
-    });
+    const out = execFileSync(
+      'gh',
+      ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'],
+      { encoding: 'utf8', cwd: repoRoot },
+    );
     return out.trim();
   } catch {
     return null;
   }
 }
 
-export async function fetchGithubState({ issueNums, prNums }) {
+export async function fetchGithubState({ issueNums, prNums, repoRoot }) {
   const issues = new Map();
   const prs = new Map();
 
   for (const n of issueNums) {
     try {
-      const data = ghJson(['issue', 'view', String(n), '--json', 'state']);
+      const data = ghJson(['issue', 'view', String(n), '--json', 'state'], repoRoot);
       issues.set(n, data.state);
     } catch {
       // offline / missing issue — skip
@@ -31,7 +37,7 @@ export async function fetchGithubState({ issueNums, prNums }) {
 
   for (const n of prNums) {
     try {
-      const data = ghJson(['pr', 'view', String(n), '--json', 'state']);
+      const data = ghJson(['pr', 'view', String(n), '--json', 'state'], repoRoot);
       prs.set(n, data.state);
     } catch {
       // offline / missing PR — skip
