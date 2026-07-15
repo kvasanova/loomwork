@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/strategy-gate.sh" },
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/close-out-gate.sh" }
+        ]
+      }
+    ]
+  }
+}
