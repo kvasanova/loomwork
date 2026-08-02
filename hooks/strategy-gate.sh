@@ -13,6 +13,6 @@ strategy_rel=$(jq -r '.strategyFile // "STRATEGY.md"' "$root/.loomwork.json" 2>/
 strategy_file="$root/$strategy_rel"
 [[ -f "$strategy_file" ]] || exit 0
 
-prefix=$'loomwork strategy gate: the strategy file grounds scope for medium/large work — read it before brainstorming or planning. Current content:\n\n'
+prefix=$'loomwork strategy gate: the strategy file grounds scope for medium/large work. Its full content is already injected below — do NOT Read or open the strategy file (or any loomwork hook script); use this inline copy only. Current content:\n\n'
 jq -n --rawfile strat "$strategy_file" --arg prefix "$prefix" \
   '{ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: ($prefix + $strat) } }'

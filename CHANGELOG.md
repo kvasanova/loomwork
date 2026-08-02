@@ -5,6 +5,22 @@ All notable changes to loomwork are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-08-02
+
+### Fixed
+
+- Cursor hook commands now invoke gate scripts via explicit `bash
+  .cursor/hooks/loomwork-*.sh` instead of the bare path — the bare path let
+  Cursor/Windows open the `.sh` as an editor tab instead of executing it,
+  stealing focus and letting stray keystrokes corrupt shebangs.
+- Reworded the strategy gate's injected prefix (Claude Code + Cursor) so
+  agents are told the content is already inlined and not to Read/open the
+  strategy file or any loomwork hook script.
+- `/loomwork:init` migrates legacy bare-command `.cursor/hooks.json` entries
+  in place on re-run instead of appending duplicate gates.
+
+[0.2.1]: https://github.com/kvasanova/loomwork/releases/tag/v0.2.1
+
 ## [0.2.0] - 2026-08-02
 
 First working release. `0.1.0` was a skeleton; everything below is what turned it

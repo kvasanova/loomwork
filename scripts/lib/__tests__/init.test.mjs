@@ -63,8 +63,51 @@ test('initRepo merges into an existing .cursor/hooks.json, preserving foreign en
   const merged = JSON.parse(fs.readFileSync(path.join(root, '.cursor/hooks.json'), 'utf8'));
   const cmds = merged.hooks.beforeSubmitPrompt.map((e) => e.command);
   assert.ok(cmds.includes('.cursor/hooks/other.sh'));
-  assert.ok(cmds.includes('.cursor/hooks/loomwork-strategy-gate.sh'));
+  assert.ok(cmds.includes('bash .cursor/hooks/loomwork-strategy-gate.sh'));
   assert.equal(merged.hooks.postToolUse.length, 2);
+});
+
+test('initRepo migrates legacy loomwork hook entries instead of duplicating them', () => {
+  const root = freshRepo();
+  fs.mkdirSync(path.join(root, '.cursor'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, '.cursor/hooks.json'),
+    JSON.stringify({
+      version: 1,
+      hooks: {
+        beforeSubmitPrompt: [
+          { command: '.cursor/hooks/loomwork-strategy-gate.sh' },
+          { command: '.cursor/hooks/loomwork-close-out-gate.sh' },
+        ],
+        postToolUse: [
+          { command: '.cursor/hooks/loomwork-strategy-gate.sh', matcher: 'Read|Skill' },
+          { command: '.cursor/hooks/loomwork-close-out-gate.sh', matcher: 'Read|Skill' },
+        ],
+      },
+    }),
+  );
+  initRepo(root, PLUGIN_ROOT);
+  const merged = JSON.parse(fs.readFileSync(path.join(root, '.cursor/hooks.json'), 'utf8'));
+
+  assert.equal(merged.hooks.beforeSubmitPrompt.length, 2);
+  assert.equal(merged.hooks.postToolUse.length, 2);
+  for (const entry of Object.values(merged.hooks).flat()) {
+    assert.match(entry.command, /^bash \.cursor\/hooks\/loomwork-/);
+  }
+  for (const entry of merged.hooks.postToolUse) {
+    assert.equal(entry.matcher, 'Read|Skill');
+  }
+});
+
+test('initRepo re-copies Cursor hook scripts when they drift from the templates', () => {
+  const root = freshRepo();
+  initRepo(root, PLUGIN_ROOT);
+  const gate = path.join(root, '.cursor/hooks/loomwork-strategy-gate.sh');
+  fs.writeFileSync(gate, '#!/usr/bin/env bash\n# stale copy\n');
+
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(actions.some((a) => a.includes('loomwork-strategy-gate.sh')));
+  assert.match(fs.readFileSync(gate, 'utf8'), /do NOT Read or open the strategy file/);
 });
 
 test('initRepo appends to AGENTS.md when CLAUDE.md is absent and AGENTS.md exists', () => {

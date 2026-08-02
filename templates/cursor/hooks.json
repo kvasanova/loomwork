@@ -2,12 +2,12 @@
   "version": 1,
   "hooks": {
     "beforeSubmitPrompt": [
-      { "command": ".cursor/hooks/loomwork-strategy-gate.sh" },
-      { "command": ".cursor/hooks/loomwork-close-out-gate.sh" }
+      { "command": "bash .cursor/hooks/loomwork-strategy-gate.sh" },
+      { "command": "bash .cursor/hooks/loomwork-close-out-gate.sh" }
     ],
     "postToolUse": [
-      { "command": ".cursor/hooks/loomwork-strategy-gate.sh", "matcher": "Read|Skill" },
-      { "command": ".cursor/hooks/loomwork-close-out-gate.sh", "matcher": "Read|Skill" }
+      { "command": "bash .cursor/hooks/loomwork-strategy-gate.sh", "matcher": "Read|Skill" },
+      { "command": "bash .cursor/hooks/loomwork-close-out-gate.sh", "matcher": "Read|Skill" }
     ]
   }
 }

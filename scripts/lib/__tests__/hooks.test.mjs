@@ -30,6 +30,15 @@ test('strategy-gate fires on plugin-qualified brainstorming with default STRATEG
   assert.equal(out.hookSpecificOutput.hookEventName, 'PostToolUse');
 });
 
+test('strategy-gate tells agents not to open the strategy file', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'content-marker-42\n');
+  const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming'), root);
+  const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  assert.match(context, /do NOT Read or open the strategy file/);
+  assert.doesNotMatch(context, /read it before/i);
+});
+
 test('strategy-gate honors custom strategyFile from .loomwork.json', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
   fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ strategyFile: 'docs/VISION.md' }));

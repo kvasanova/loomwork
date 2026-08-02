@@ -45,6 +45,15 @@ Scaffolds the docs layout, a STRATEGY.md seed, Cursor hook mirrors, and a
 CLAUDE.md block. Idempotent. Non-default paths: create `.loomwork.json`
 (keys `specsDir`, `plansDir`, `strategyFile`) before running init.
 
+**Re-run `/loomwork:init` after every plugin update.** Cursor reads hooks from
+the workspace `.cursor/`, not from the plugin, so already-initialized repos
+keep running whatever hook scripts were copied in at init time. Re-running
+refreshes the scripts and migrates stale `.cursor/hooks.json` entries in place.
+
+Cursor hooks invoke the scripts as `bash .cursor/hooks/loomwork-*.sh`. On
+Windows that needs `bash` on PATH (Git Bash or MSYS) — without the explicit
+`bash`, Cursor may open the `.sh` in an editor tab instead of running it.
+
 ## What ships
 
 | Piece | What it does |

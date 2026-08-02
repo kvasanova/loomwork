@@ -40,7 +40,7 @@ if [[ -z "$root" || ! -f "$strategy_file" ]]; then
   exit 0
 fi
 
-prefix=$'loomwork strategy gate: the strategy file grounds scope for medium/large work — read it before brainstorming or planning. Current content:\n\n'
+prefix=$'loomwork strategy gate: the strategy file grounds scope for medium/large work. Its full content is already injected below — do NOT Read or open the strategy file (or any loomwork hook script); use this inline copy only. Current content:\n\n'
 jq -n \
   --rawfile strat "$strategy_file" \
   --arg prefix "$prefix" \
