@@ -52,6 +52,30 @@ export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
     : { version: 1, hooks: {} };
   hooksJson.hooks ??= {};
   let hooksChanged = !hadHooksJson;
+
+  // Migrate loomwork entries written by older versions: bare `.cursor/hooks/*.sh`
+  // commands (Cursor/Windows can open these as editor tabs instead of running
+  // them) and the noisy `Read|Skill` postToolUse matcher. Rewrite in place so a
+  // re-run fixes installed repos rather than appending a duplicate gate.
+  for (const [event, entries] of Object.entries(hooksJson.hooks)) {
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      const target = template.hooks[event]?.find(
+        (t) => t.command.endsWith(` ${entry.command}`) || t.command === entry.command,
+      );
+      if (!target) continue;
+      if (entry.command !== target.command) {
+        entry.command = target.command;
+        hooksChanged = true;
+      }
+      if ((entry.matcher ?? '') !== (target.matcher ?? '')) {
+        if (target.matcher === undefined) delete entry.matcher;
+        else entry.matcher = target.matcher;
+        hooksChanged = true;
+      }
+    }
+  }
+
   for (const [event, entries] of Object.entries(template.hooks)) {
     hooksJson.hooks[event] ??= [];
     for (const entry of entries) {

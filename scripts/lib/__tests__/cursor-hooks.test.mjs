@@ -53,6 +53,26 @@ test('cursor strategy gate silent on unrelated prompt', () => {
   assert.equal(result.stdout.trim(), '');
 });
 
+test('cursor strategy gate tells agents not to open the strategy file', () => {
+  const root = strategyRepo();
+  const result = runHook('loomwork-strategy-gate.sh', {
+    hook_event_name: 'postToolUse',
+    tool_name: 'Skill',
+    tool_input: { skill: 'superpowers:brainstorming' },
+    workspace_roots: [root],
+  });
+  const context = JSON.parse(result.stdout).additional_context;
+  assert.match(context, /do NOT Read or open the strategy file/);
+  assert.doesNotMatch(context, /read it before/i);
+});
+
+test('cursor hooks.json invokes every script through an explicit bash', () => {
+  const template = JSON.parse(fs.readFileSync(path.join(TPL_DIR, 'hooks.json'), 'utf8'));
+  for (const entry of Object.values(template.hooks).flat()) {
+    assert.match(entry.command, /^bash \.cursor\/hooks\/loomwork-/);
+  }
+});
+
 test('cursor close-out gate fires on beforeSubmitPrompt finishing prompt', () => {
   const root = strategyRepo();
   const result = runHook('loomwork-close-out-gate.sh', {
