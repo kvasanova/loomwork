@@ -56,11 +56,39 @@ test('strategy-gate stays silent on non-matching skill', () => {
   assert.equal(result.stdout.trim(), '');
 });
 
-test('strategy-gate stays silent when strategy file missing', () => {
+test('strategy-gate nudges toward ce-strategy when the strategy file is missing', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
   const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming'), root);
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout);
+  assert.equal(out.hookSpecificOutput.hookEventName, 'PostToolUse');
+  const context = out.hookSpecificOutput.additionalContext;
+  assert.match(context, /no strategy file yet/);
+  assert.match(context, /compound-engineering:ce-strategy/);
+});
+
+test('strategy-gate missing-file nudge fires for writing-plans too', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  const result = runHook('strategy-gate.sh', skillEvent('superpowers:writing-plans'), root);
+  const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  assert.match(context, /compound-engineering:ce-strategy/);
+});
+
+test('strategy-gate stays silent on non-matching skill when strategy file missing', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  const result = runHook('strategy-gate.sh', skillEvent('superpowers:test-driven-development'), root);
   assert.equal(result.status, 0);
   assert.equal(result.stdout.trim(), '');
+});
+
+test('strategy-gate missing-file nudge honors custom strategyFile', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ strategyFile: 'docs/VISION.md' }));
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'decoy-should-not-be-injected\n');
+  const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming'), root);
+  const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  assert.match(context, /no strategy file yet/);
+  assert.doesNotMatch(context, /decoy-should-not-be-injected/);
 });
 
 test('close-out-gate fires on finishing-a-development-branch with configured plansDir', () => {
