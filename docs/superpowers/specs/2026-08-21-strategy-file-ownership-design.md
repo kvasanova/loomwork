@@ -46,7 +46,7 @@ Two related overreaches follow from the same root:
 
 > `STRATEGY.md` belongs to `ce-strategy`. loomwork reads it, points at it, and
 > reminds people to run `ce-strategy`. loomwork does not define its shape and
-> does not append to it mechanically.
+> does not write to it.
 
 Every change below follows from this rule, and future changes to loomwork's
 handling of the strategy file should be tested against it.
@@ -58,7 +58,8 @@ handling of the strategy file should be tested against it.
 - loomwork stops shipping and seeding its own strategy template.
 - A repo with no strategy file gets pointed at `ce-strategy` — at init time and
   again at scope time — rather than silently having none.
-- loomwork's remaining strategy touches stay inside what `ce-strategy` sanctions.
+- loomwork writes nothing to `STRATEGY.md`. A ship that changes the strategy is
+  routed to a `ce-strategy` update run, not edited in place.
 
 ## Non-goals
 
@@ -72,48 +73,68 @@ handling of the strategy file should be tested against it.
 
 ## Design
 
-### 1. Close-out Step 3b — narrow the strategy touch
+### 1. Close-out Step 3b — a decision, not a write
 
 `skills/close-out/SKILL.md` Step 3b is rewritten. The step still runs only when
-the branch had a paired spec and the work is not plan-only.
+the branch had a paired spec and the work is not plan-only. It no longer writes
+to `STRATEGY.md` at all; it asks whether the ship changed the strategy and, if
+so, hands off to `ce-strategy`.
 
-Kept:
+The new step, in substance:
 
-- **`last_updated` bump** when a large-capability spec ships. `ce-strategy` sets
-  this field on every update run, so a loomwork edit that bumps it is consistent
-  with the file's contract.
-- **Tracks sentence** when a shipped capability changes what an investment area
-  covers. Legal under ce's definition of a track as "the investment area, not a
-  feature list" — the edit describes the area, not the ship.
-- **`## Not working on`** on a retired direction, reworded to ce's framing:
-  things the team keeps being tempted by.
+> **Did this ship change the strategy?** Does the shipped capability introduce
+> an externally visible milestone (a launch), change what an investment area
+> covers, retire a direction the team keeps revisiting, or shift the target
+> problem or approach? If **yes**, run `compound-engineering:ce-strategy`
+> targeted at that section, on the feature branch, so the update rides the same
+> PR. If **no**, touch nothing. Ship history lives in spec frontmatter
+> (`implemented_in`, `verified`), plan DONE banners, and git — not here.
 
 Removed:
 
+- The **`last_updated` bump**. The field means "strategy content last revised";
+  `ce-strategy` sets it only on an interview or update run. A bump with no
+  content change tells readers — and `ce-ideate`/`ce-brainstorm`, which load the
+  file as grounding — that the strategy was revised when it was not. Worse, it
+  masks staleness: `ce-strategy`'s update run "only challenges sections that
+  look stale or weak", and a per-ship bump keeps the date perpetually fresh so
+  that check never fires. A date also cannot distinguish "reviewed, unchanged"
+  from "revised", so it carries no information worth the write.
 - The `## Milestones` append. Entirely.
 - The instruction to create a `## Milestones` section when missing. ce's default
   is to skip the section, so loomwork must never conjure it.
 - "Do not add a fifth track — fold into an existing track or replace the weakest
-  track", restated as ce's actual bound of 2-4 tracks.
+  track". With track edits gone entirely there is no bound for loomwork to
+  restate; track count is `ce-strategy`'s to enforce.
+- The **Tracks sentence** on in-flight work. `ce-strategy`'s `SKILL.md` states it
+  "does not update the issue tracker or reconcile in-flight work"; a sentence
+  written per spec-status change is a schedule entry, not the track's standing
+  purpose (`references/interview.md` section 5 captures a track as "a name, a
+  one-line purpose, and a short note on why this serves the approach"). One write
+  per lifecycle event is the same unbounded growth as the Milestones bullet.
+- The **`## Not working on`** edit. `references/interview.md` section 7 makes the
+  section optional, "skip by default", and interview-gated. A close-out step
+  deciding on its own that a retired direction belongs there defines the file's
+  shape by proxy — the overreach this spec removes.
 
-Added:
+Cost accepted: a ship that genuinely changed the strategy now requires an
+interactive `ce-strategy` run inside close-out rather than a one-line edit. That
+is the same bar ce applies to every other strategy change, and it is rare by
+construction — most ships do not move the strategy.
 
-- When a ship is genuinely externally visible (a launch), close-out points the
-  user at a `ce-strategy` update run rather than writing the milestone itself.
-- A note on where ship history actually lives: spec frontmatter
-  (`implemented_in`, `verified`), plan DONE banners, and git. Recording it in
-  `STRATEGY.md` was never necessary — it duplicated `implemented_in`.
-
-Step 4's verification block keeps `grep '^last_updated:' STRATEGY.md` and drops
-any wording implying a Milestones bullet was written.
+Step 4's verification block drops `grep '^last_updated:' STRATEGY.md`; there is
+no loomwork-authored write left to verify. Step 5's `git add` keeps
+`STRATEGY.md` in its path list only because a `ce-strategy` run in Step 3b may
+have modified it.
 
 ### 2. Playbook doctrine
 
 `references/PLAYBOOK.md` currently describes the close-out end state for the
 strategy file as "`last_updated` bump plus Milestones/Tracks/Not-working-on edits
-(skill Step 3b)". It is restated as Tracks/Not-working-on only, and the governing
-rule above is added so the ownership boundary is doctrine rather than an
-implementation detail of one skill.
+(skill Step 3b)". It is restated as: unchanged by close-out; a strategy-changing
+ship gets a `ce-strategy` update run on the same branch. The governing rule above
+is added so the ownership boundary is doctrine rather than an implementation
+detail of one skill.
 
 ### 3. init defers to ce-strategy
 
@@ -136,36 +157,72 @@ non-interactive.
 is available and stops without writing when it is not, so the new Step 3
 invocation cannot be reached with the skill missing.
 
-Idempotency is preserved: a repo whose strategy file exists gets no prompt and no
-write, and re-running init on an initialized repo remains a no-op.
+Idempotency is preserved in the sense that matters: init performs no writes and
+no prompts for a strategy file that already exists, and re-running it never
+changes the repo twice.
+
+One reporting consequence is intended. `scripts/init.mjs` prints "already
+initialized — no changes" only when the action list is empty, so an initialized
+repo that still has no strategy file reports the missing-file action on every
+run rather than that line. That is correct — the condition genuinely persists
+until someone runs `ce-strategy` — but it means "no-op" here means "no writes",
+not "no actions reported".
 
 ### 4. Strategy gate nudges on a missing file
 
+This implements the second half of the Goals bullet "A repo with no strategy file
+gets pointed at `ce-strategy` — at init time and again at scope time". It shares
+the root cause of the Milestones problem: both are places where loomwork handled
+`STRATEGY.md` on its own terms instead of deferring to its owner — there by
+writing content ce does not want, here by staying silent when ce should be run.
+
 `hooks/strategy-gate.sh` currently exits 0 when the strategy file does not exist,
 so a repo with no strategy file gets no reminder at exactly the moment grounding
-matters. The missing-file branch instead injects a short reminder — no strategy
-file yet, run `ce-strategy` before scoping medium or large work — for the same
-skill matchers the gate already fires on (`brainstorming`, `writing-plans`).
+matters. The missing-file branch instead injects this reminder, for the same two
+skill matchers the gate already fires on (`brainstorming`, `writing-plans`):
+
+```
+loomwork strategy gate: no strategy file yet. Run
+compound-engineering:ce-strategy to author one before scoping medium or large
+work.
+```
+
+The nudge is one sentence, carries no file content, and reuses each harness's
+existing output envelope — `hookSpecificOutput.additionalContext` for the plugin
+gate, `additional_context` for the Cursor gate. It checks only whether the file
+exists; it never inspects the file's shape, which the Non-goals rule out.
 
 Behavior when the file exists is unchanged, including the existing instruction
 telling agents not to open the strategy file directly.
 
-`templates/cursor/loomwork-strategy-gate.sh` receives the same change. The two
-scripts are copies, so they move together; init's existing content-diff migration
-rewrites the installed Cursor copy on the next run.
+`templates/cursor/loomwork-strategy-gate.sh` receives the equivalent change. The
+two scripts are **not** copies — they are independent implementations of one
+behavior. The plugin gate handles `PostToolUse`, resolves the root from
+`CLAUDE_PROJECT_DIR`, and emits `hookSpecificOutput`; the Cursor gate also
+handles `beforeSubmitPrompt`, resolves the root from `workspace_roots[0]`, and
+emits `additional_context`. The missing-file behavior is ported to each in its
+own idiom, not copied. Init's existing content-diff migration
+(`scripts/init.mjs`, the `CURSOR_SCRIPTS` loop) rewrites the installed Cursor
+copy on the next run.
+
+The Cursor gate currently collapses two cases into one guard —
+`[[ -z "$root" || ! -f "$strategy_file" ]]`. The nudge must fire only when a
+workspace root resolved and the strategy file is genuinely absent; an unresolved
+root still exits silently, since the gate cannot tell whether a file is missing
+when it does not know where to look.
 
 ## Files touched
 
 | File | Change |
 | --- | --- |
-| `skills/close-out/SKILL.md` | Rewrite Step 3b; adjust Step 4 verification wording |
+| `skills/close-out/SKILL.md` | Rewrite Step 3b as a decision + `ce-strategy` handoff; drop the `last_updated` grep from Step 4 |
 | `references/PLAYBOOK.md` | Restate close-out strategy end state; add governing rule |
 | `scripts/init.mjs` | Stop copying the template; emit a missing-file action |
 | `templates/STRATEGY.md` | Delete |
 | `commands/init.md` | Frontmatter description; Step 2 wording; Step 3 invokes `ce-strategy` |
 | `hooks/strategy-gate.sh` | Missing-file branch nudges instead of exiting silently |
 | `templates/cursor/loomwork-strategy-gate.sh` | Same missing-file change |
-| `README.md` | Remove descriptions of the seed and the Milestones append |
+| `README.md` | Remove descriptions of the seed and the Milestones append; describe both gate paths (inject when present, nudge when absent) |
 
 ## Testing
 
@@ -191,8 +248,16 @@ Retained as regression guards:
 New:
 
 - `cursor-hooks.test.mjs` gains a missing-file case matching the Claude Code gate.
-- A case asserting the Cursor gate script content stays in sync with the plugin
-  gate's missing-file behavior.
+- A behavioral parity case asserting both gates name `ce-strategy` on the
+  missing-file path, each through its own output envelope. This asserts behavior,
+  not script text: the two scripts are independent implementations, so a
+  content-equality assertion would be false by construction.
+- A case asserting the Cursor gate stays silent when no workspace root resolves,
+  even with a matching skill — the no-root path must not be mistaken for a
+  missing file.
+- Cases asserting each gate's nudge fires for both matchers (`brainstorming`,
+  `writing-plans`) and stays silent on non-matching skills when the file is
+  absent.
 
 ## Migration and blast radius
 
@@ -211,10 +276,13 @@ No change is destructive to already-initialized repos.
 
 - [ ] `skills/close-out/SKILL.md` Step 3b contains no instruction to append to or
       create a `## Milestones` section.
-- [ ] `skills/close-out/SKILL.md` Step 3b still bumps `last_updated` and still
-      covers Tracks and `## Not working on` edits.
-- [ ] `references/PLAYBOOK.md` states the governing rule and no longer lists
-      Milestones as a close-out edit target.
+- [ ] `skills/close-out/SKILL.md` Step 3b contains no write to `STRATEGY.md` —
+      no `last_updated` bump, no Tracks or `## Not working on` edit — and points
+      at a `ce-strategy` update run when the ship changed the strategy.
+- [ ] `references/PLAYBOOK.md` states the governing rule.
+- [ ] `references/PLAYBOOK.md` lists the close-out strategy end state as
+      unchanged by close-out, with strategy-changing ships routed to
+      `ce-strategy`.
 - [ ] `templates/STRATEGY.md` does not exist.
 - [ ] `initRepo` does not create a strategy file, and returns an action naming the
       missing file and `ce-strategy`.
@@ -224,9 +292,11 @@ No change is destructive to already-initialized repos.
       seed.
 - [ ] `hooks/strategy-gate.sh` injects a `ce-strategy` reminder when the strategy
       file is missing and a matching skill fires.
-- [ ] `templates/cursor/loomwork-strategy-gate.sh` behaves identically to
-      `hooks/strategy-gate.sh` on the missing-file path.
+- [ ] `templates/cursor/loomwork-strategy-gate.sh` nudges toward `ce-strategy` on
+      the missing-file path, through its own `additional_context` envelope, and
+      stays silent when no workspace root resolves.
 - [ ] Gate behavior with a strategy file present is unchanged.
 - [ ] `README.md` describes neither a seeded strategy template nor a per-merge
-      Milestones bullet.
+      Milestones bullet, and describes both gate paths.
+- [ ] No loomwork code, skill, or hook writes to `STRATEGY.md`.
 - [ ] The full test suite passes.
