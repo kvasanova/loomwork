@@ -22,6 +22,11 @@ artifacts — `STRATEGY.md` and `docs/solutions/`.
 | **Spec / plan** | How do we build feature X? Is it done? | superpowers + status frontmatter  |
 | **Knowledge**   | How did we solve problem Y before?     | `docs/solutions/` (`ce-compound`) |
 
+> **`STRATEGY.md` belongs to `ce-strategy`.** loomwork reads it, points at it,
+> and reminds people to run `ce-strategy`. loomwork does not define its shape
+> and does not write to it. Test any future change to loomwork's handling of
+> the strategy file against this rule.
+
 ## Where learnings go
 
 Three stores, three jobs — pick one per learning:
@@ -49,11 +54,13 @@ Three stores, three jobs — pick one per learning:
 Check `STRATEGY.md` before starting medium/large work — it grounds scope.
 Enforced by hooks (see [Hook enforcement](#hook-enforcement)); invoking
 `brainstorming` or `writing-plans` auto-injects `STRATEGY.md` content into
-context, so the read does not depend on the agent remembering.
+context, so the read does not depend on the agent remembering. When the repo
+has no strategy file, the same gates inject a one-sentence nudge to run
+`ce-strategy` instead.
 
-Update `STRATEGY.md` in the same close-out PR when the trigger in
-[Close-out before merge](#close-out-before-merge) applies (large-capability
-ship or tracked-initiative status change).
+Close-out never edits `STRATEGY.md`. When a ship genuinely changes the
+strategy, run `ce-strategy` on the feature branch so the update rides the same
+PR — see [Close-out before merge](#close-out-before-merge).
 
 **Bug / small fix** — GitHub issue `#` → `systematic-debugging` (root cause
 first) → `test-driven-development` (failing test first) → PR. If the fix taught
@@ -163,8 +170,9 @@ fixes with no plan/spec skip it. Close-out is doc-only and rides the same PR as
 the feature — no follow-up PR after merge; merge style (squash, rebase, merge
 commit, local merge) does not matter.
 
-**How:** invoke the `loomwork:close-out` skill — it owns the procedure (banner string, checkbox ticking, frontmatter updates,
-STRATEGY.md edits, commit + push). Do **not** add a project override of the
+**How:** invoke the `loomwork:close-out` skill — it owns the procedure (banner
+string, checkbox ticking, frontmatter updates, the `ce-strategy` handoff
+decision, commit + push). Do **not** add a project override of the
 superpowers `finishing-a-development-branch` skill. Required end state:
 
 - **Plan** — frozen: DONE banner as line 2, every box ticked, task text
@@ -173,12 +181,13 @@ superpowers `finishing-a-development-branch` skill. Required end state:
   criteria verified against real code, frontmatter
   `status`/`implemented_in`/`verified` updated, body boxes ticked; genuinely
   unmet criteria mean `status: partial` plus `## Remaining` (skill Step 3).
-- **STRATEGY.md** — only when a large-capability spec ships or a tracked
-  initiative's status changes (plan-only rollouts and bug fixes skip):
-  `last_updated` bump plus Milestones/Tracks/Not-working-on edits (skill
-  Step 3b). Keep spec checklists and issue lists out of `STRATEGY.md` — specs
-  stay the detailed "is it built" signal; `STRATEGY.md` stays the roadmap
-  anchor.
+- **STRATEGY.md** — unchanged by close-out. Step 3b asks whether the ship
+  changed the strategy (new externally visible milestone, changed investment
+  area, retired direction, shifted target problem or approach). A yes routes to
+  a `ce-strategy` update run on the same branch, so it rides the same PR; a no
+  touches nothing. Ship history lives in spec frontmatter, plan DONE banners,
+  and git — specs stay the detailed "is it built" signal; `STRATEGY.md` stays
+  the roadmap anchor that `ce-strategy` owns.
 
 **Enforcement:** hooks inject the close-out reminder when
 `finishing-a-development-branch` is invoked — see
@@ -197,6 +206,11 @@ harnesses ship in-repo — edit the matching config when changing behavior.
 | --- | --- | --- | --- |
 | **STRATEGY.md** | `brainstorming`, `writing-plans` | loomwork plugin hooks/hooks.json — PostToolUse + Skill matcher (ships with the plugin) | .cursor/hooks.json → loomwork-strategy-gate.sh (written by /loomwork:init) — `beforeSubmitPrompt` (slash commands) + `postToolUse` on `Read`/`Skill` |
 | **Close-out** | `finishing-a-development-branch` | loomwork plugin hooks/hooks.json — PostToolUse + Skill matcher (ships with the plugin) | .cursor/hooks.json → loomwork-close-out-gate.sh (written by /loomwork:init) — same events |
+
+**Strategy gate, both harnesses:** with a strategy file present, inject its full
+content and tell the agent not to open the file. With no strategy file, inject a
+one-sentence nudge to run `ce-strategy`. The gate checks existence only — it
+never inspects the file's shape.
 
 **Claude Code:** the gates ship with the plugin — no repo-local hook config needed.
 

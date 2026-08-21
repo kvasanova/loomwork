@@ -5,6 +5,59 @@ All notable changes to loomwork are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-21
+
+`STRATEGY.md` belongs to `compound-engineering:ce-strategy`. loomwork reads it,
+points at it, and reminds people to run `ce-strategy` — it does not define the
+file's shape and does not write to it. Close-out had been appending one
+`## Milestones` bullet per merge, creating that section when absent, and bumping
+`last_updated` on every ship, which is the content `ce-strategy` documents as
+optional and skip-by-default. This release removes every loomwork write path to
+the file.
+
+### Changed
+
+- **`loomwork:close-out` Step 3b is a decision, not a write.** It asks whether
+  the ship introduced an externally visible milestone, changed what an
+  investment area covers, retired a direction, or shifted the target problem. A
+  yes routes to a `ce-strategy` run on the feature branch so the update rides
+  the same PR; a no touches nothing. No `last_updated` bump, no Milestones
+  append, no Tracks or `## Not working on` edit.
+- **Doctrine restated** in `references/PLAYBOOK.md` and `README.md`, with the
+  governing rule recorded so future changes to loomwork's handling of the
+  strategy file can be tested against it.
+
+### Added
+
+- **Missing-file nudge in both hook gates.** `hooks/strategy-gate.sh` and
+  `templates/cursor/loomwork-strategy-gate.sh` previously exited silently when
+  no strategy file existed, giving no reminder at the moment grounding matters.
+  Both now inject a one-sentence pointer to `ce-strategy`, each through its own
+  output envelope. The gates check existence only, never shape; behavior when
+  the file exists is unchanged.
+
+### Removed
+
+- **`templates/STRATEGY.md`** — a loomwork-authored variant of ce's template
+  that drifted independently from it.
+- **Strategy-file seeding in `/loomwork:init`.** `initRepo` now reports the file
+  as missing and names `ce-strategy` instead of creating one. An existing
+  strategy file is still left byte-identical, and no already-initialized repo
+  loses content — accumulated `## Milestones` entries are left in place.
+
+### Fixed
+
+- `loomwork:close-out` Step 5 ran `git add docs/... STRATEGY.md`, which aborts
+  with `fatal: pathspec 'STRATEGY.md' did not match any files` (exit 128) when
+  the file is absent, so the commit on the next line never ran. Now guarded on
+  existence. Reachable in practice as of this release, since init no longer
+  seeds the file.
+- `hooks/strategy-gate.sh` resolved its root as `${CLAUDE_PROJECT_DIR:-$PWD}`
+  and could act on an unrelated directory's strategy file. It now requires a
+  resolved `CLAUDE_PROJECT_DIR`, matching the Cursor gate.
+
+[0.3.0]: https://github.com/kvasanova/loomwork/releases/tag/v0.3.0
+
 ## [0.2.1] - 2026-08-02
 
 ### Fixed

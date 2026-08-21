@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # loomwork (Cursor) strategy gate: inject the strategy file when brainstorming
-# or writing-plans starts. Claude Code equivalent: the loomwork plugin's
-# hooks/strategy-gate.sh (PostToolUse + Skill matcher).
+# or writing-plans starts; when no strategy file exists, nudge toward
+# ce-strategy instead (ce owns the file — loomwork never writes it). Claude
+# Code equivalent: the loomwork plugin's hooks/strategy-gate.sh (PostToolUse +
+# Skill matcher).
 set -euo pipefail
 
 input=$(cat)
@@ -34,9 +36,18 @@ if [[ "$should_fire" != true ]]; then
   exit 0
 fi
 
+# No workspace root: the gate cannot tell whether a strategy file is missing
+# when it does not know where to look. Stay silent — never nudge.
+if [[ -z "$root" ]]; then
+  exit 0
+fi
+
 strategy_rel=$(jq -r '.strategyFile // "STRATEGY.md"' "$root/.loomwork.json" 2>/dev/null || echo 'STRATEGY.md')
 strategy_file="${root}/${strategy_rel}"
-if [[ -z "$root" || ! -f "$strategy_file" ]]; then
+
+if [[ ! -f "$strategy_file" ]]; then
+  nudge='loomwork strategy gate: no strategy file yet. Run compound-engineering:ce-strategy to author one before scoping medium or large work.'
+  jq -n --arg nudge "$nudge" '{ additional_context: $nudge }'
   exit 0
 fi
 

@@ -5,7 +5,7 @@ description: Use during finishing-a-development-branch (after tests pass, before
 
 # SDD Close-Out Before Merge
 
-**Announce:** "Using loomwork:close-out to freeze the plan, update the spec, and touch the strategy file."
+**Announce:** "Using loomwork:close-out to freeze the plan and update the spec."
 
 **Preflight:** verify the superpowers and compound-engineering plugins are
 installed (their skills appear in your available-skills list). If either is
@@ -108,34 +108,33 @@ For each shipped plan:
    If the spec has no acceptance section yet, append `## Acceptance` at EOF
    with `- [x]` items derived from Goals/Verification, then set `verified:`.
 
-## Step 3b: Update the strategy file (large capabilities)
+## Step 3b: Did this ship change the strategy?
 
 Skip when the branch had **no** paired spec, or when the work is plan-only
 (config/doc rollout).
 
-1. Bump frontmatter:
-   ```bash
-   perl -pi -e 's/^last_updated: .*/last_updated: YYYY-MM-DD/' STRATEGY.md
-   ```
-   Replace `YYYY-MM-DD` with today.
+**`STRATEGY.md` belongs to `compound-engineering:ce-strategy`.** This step
+writes nothing to it. It asks one question and, on a yes, hands off.
 
-2. **Shipped** (`status: implemented` after Step 3): append under `## Milestones`
-   (create section after `## Tracks` if missing):
-   ```markdown
-   - **YYYY-MM-DD** — {{capability}} shipped (PR #N).
-   ```
-   One bullet per merge. If the capability fits an existing track, no track edit
-   required. If it opens a new investment area, add one sentence to the nearest
-   track subsection. Do not add a fifth track — fold into an existing track or
-   replace the weakest track.
+Ask: does the shipped capability
 
-3. **Approved / in-progress** (spec status changes without ship): add one sentence
-   to the relevant `## Tracks` subsection describing what is in flight. No
-   Milestones entry.
+- introduce an externally visible milestone (a launch), or
+- change what an investment area covers, or
+- retire a direction the team keeps revisiting, or
+- shift the target problem or approach?
 
-4. **Retired direction**: add/update `## Not working on` if applicable.
+**Yes** → run `compound-engineering:ce-strategy` targeted at that section, on
+the feature branch, so the update rides the same PR. That skill decides what
+the file says and whether `last_updated` moves.
 
-5. Do not paste acceptance checklists or issue lists into the strategy file.
+**No** → touch nothing. Most ships land here. Ship history lives in spec
+frontmatter (`implemented_in`, `verified`), plan DONE banners, and git — not in
+the strategy file.
+
+Never append to `## Milestones`, never create that section, never bump
+`last_updated` yourself, and never edit `## Tracks` or `## Not working on` from
+this step. `ce-strategy` keeps those sections optional and interview-gated; a
+per-ship write turns the roadmap anchor into a changelog and masks staleness.
 
 ## Step 4: Verify
 
@@ -143,16 +142,22 @@ Skip when the branch had **no** paired spec, or when the work is plan-only
 head -5 docs/superpowers/plans/<plan>.md    # DONE banner present
 grep -c '\- \[ \]' docs/superpowers/plans/<plan>.md   # expect 0
 grep '^status:' docs/superpowers/specs/<spec>.md      # implemented
-grep '^last_updated:' STRATEGY.md    # today's date when Step 3b ran
 ```
 
 ## Step 5: Commit and push (feature branch)
 
 ```bash
-git add docs/superpowers/plans/ docs/superpowers/specs/ STRATEGY.md
+git add docs/superpowers/plans/ docs/superpowers/specs/
+# Step 3b ran ce-strategy? stage its edit too:
+[ -f STRATEGY.md ] && git add STRATEGY.md
 git commit -m "docs(sdd): close out plan/spec for PR #N (#issue)"
 git push   # Option 2: updates open PR before merge; Option 1: push if remote branch exists
 ```
+
+`STRATEGY.md` is staged only when it exists and a `ce-strategy` run in Step 3b
+modified it. Close-out itself writes nothing to it. `git add` on a bare path
+that matches no tracked file is a fatal error, not a no-op — that's why the
+guard checks existence first instead of listing `STRATEGY.md` directly.
 
 Include the issue number when known.
 
