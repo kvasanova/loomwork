@@ -91,6 +91,12 @@ test('strategy-gate missing-file nudge honors custom strategyFile', () => {
   assert.doesNotMatch(context, /decoy-should-not-be-injected/);
 });
 
+test('strategy-gate stays silent when CLAUDE_PROJECT_DIR is unset', () => {
+  const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming'));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
 test('close-out-gate fires on finishing-a-development-branch with configured plansDir', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
   fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ plansDir: 'docs/plans' }));

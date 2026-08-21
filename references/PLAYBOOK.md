@@ -170,8 +170,9 @@ fixes with no plan/spec skip it. Close-out is doc-only and rides the same PR as
 the feature — no follow-up PR after merge; merge style (squash, rebase, merge
 commit, local merge) does not matter.
 
-**How:** invoke the `loomwork:close-out` skill — it owns the procedure (banner string, checkbox ticking, frontmatter updates,
-the `ce-strategy` handoff decision, commit + push). Do **not** add a project override of the
+**How:** invoke the `loomwork:close-out` skill — it owns the procedure (banner
+string, checkbox ticking, frontmatter updates, the `ce-strategy` handoff
+decision, commit + push). Do **not** add a project override of the
 superpowers `finishing-a-development-branch` skill. Required end state:
 
 - **Plan** — frozen: DONE banner as line 2, every box ticked, task text

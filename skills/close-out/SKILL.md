@@ -147,14 +147,17 @@ grep '^status:' docs/superpowers/specs/<spec>.md      # implemented
 ## Step 5: Commit and push (feature branch)
 
 ```bash
-git add docs/superpowers/plans/ docs/superpowers/specs/ STRATEGY.md
+git add docs/superpowers/plans/ docs/superpowers/specs/
+# Step 3b ran ce-strategy? stage its edit too:
+[ -f STRATEGY.md ] && git add STRATEGY.md
 git commit -m "docs(sdd): close out plan/spec for PR #N (#issue)"
 git push   # Option 2: updates open PR before merge; Option 1: push if remote branch exists
 ```
 
-`STRATEGY.md` is in the `git add` list only to pick up a `ce-strategy` run from
-Step 3b. Close-out itself writes nothing to it; when Step 3b answered "no", the
-path simply matches nothing to stage.
+`STRATEGY.md` is staged only when it exists and a `ce-strategy` run in Step 3b
+modified it. Close-out itself writes nothing to it. `git add` on a bare path
+that matches no tracked file is a fatal error, not a no-op — that's why the
+guard checks existence first instead of listing `STRATEGY.md` directly.
 
 Include the issue number when known.
 

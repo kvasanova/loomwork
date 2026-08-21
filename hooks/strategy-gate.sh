@@ -10,7 +10,14 @@ input=$(cat)
 skill=$(echo "$input" | jq -r '.tool_input.skill // empty')
 echo "$skill" | grep -qE 'brainstorming|writing-plans' || exit 0
 
-root="${CLAUDE_PROJECT_DIR:-$PWD}"
+# No resolved project root: the gate cannot tell whether a strategy file is
+# missing when it does not know where to look. Stay silent — never nudge from
+# an unrelated directory. (Mirrors the Cursor gate's -z "$root" guard.)
+root="${CLAUDE_PROJECT_DIR:-}"
+if [[ -z "$root" ]]; then
+  exit 0
+fi
+
 strategy_rel=$(jq -r '.strategyFile // "STRATEGY.md"' "$root/.loomwork.json" 2>/dev/null || echo 'STRATEGY.md')
 strategy_file="$root/$strategy_rel"
 if [[ ! -f "$strategy_file" ]]; then
