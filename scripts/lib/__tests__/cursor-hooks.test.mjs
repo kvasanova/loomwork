@@ -82,3 +82,55 @@ test('cursor close-out gate fires on beforeSubmitPrompt finishing prompt', () =>
   });
   assert.match(JSON.parse(result.stdout).additional_context, /loomwork:close-out/);
 });
+
+function emptyRepo() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-cursor-empty-'));
+}
+
+test('cursor strategy gate nudges toward ce-strategy when the strategy file is missing', () => {
+  const root = emptyRepo();
+  const result = runHook('loomwork-strategy-gate.sh', {
+    hook_event_name: 'postToolUse',
+    tool_name: 'Skill',
+    tool_input: { skill: 'superpowers:brainstorming' },
+    workspace_roots: [root],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const context = JSON.parse(result.stdout).additional_context;
+  assert.match(context, /no strategy file yet/);
+  assert.match(context, /compound-engineering:ce-strategy/);
+});
+
+test('cursor strategy gate missing-file nudge fires for writing-plans too', () => {
+  const root = emptyRepo();
+  const result = runHook('loomwork-strategy-gate.sh', {
+    hook_event_name: 'beforeSubmitPrompt',
+    prompt: '/writing-plans docs/specs/foo.md',
+    workspace_roots: [root],
+  });
+  const context = JSON.parse(result.stdout).additional_context;
+  assert.match(context, /compound-engineering:ce-strategy/);
+});
+
+test('cursor strategy gate stays silent on non-matching skill when strategy file missing', () => {
+  const root = emptyRepo();
+  const result = runHook('loomwork-strategy-gate.sh', {
+    hook_event_name: 'postToolUse',
+    tool_name: 'Skill',
+    tool_input: { skill: 'superpowers:test-driven-development' },
+    workspace_roots: [root],
+  });
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('cursor strategy gate stays silent when no workspace root resolves', () => {
+  const result = runHook('loomwork-strategy-gate.sh', {
+    hook_event_name: 'postToolUse',
+    tool_name: 'Skill',
+    tool_input: { skill: 'superpowers:brainstorming' },
+    workspace_roots: [],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
