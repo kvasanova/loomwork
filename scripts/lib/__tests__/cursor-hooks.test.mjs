@@ -134,3 +134,34 @@ test('cursor strategy gate stays silent when no workspace root resolves', () => 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), '');
 });
+
+const PLUGIN_HOOKS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../hooks');
+
+test('both strategy gates name ce-strategy on the missing-file path, each in its own envelope', () => {
+  const cursorRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-parity-cursor-'));
+  const pluginRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-parity-plugin-'));
+
+  const cursorResult = runHook('loomwork-strategy-gate.sh', {
+    hook_event_name: 'postToolUse',
+    tool_name: 'Skill',
+    tool_input: { skill: 'superpowers:brainstorming' },
+    workspace_roots: [cursorRoot],
+  });
+  const pluginResult = spawnSync('bash', [path.join(PLUGIN_HOOKS_DIR, 'strategy-gate.sh')], {
+    input: JSON.stringify({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Skill',
+      tool_input: { skill: 'superpowers:brainstorming' },
+    }),
+    encoding: 'utf8',
+    env: { ...process.env, CLAUDE_PROJECT_DIR: pluginRoot },
+  });
+
+  const cursorContext = JSON.parse(cursorResult.stdout).additional_context;
+  const pluginContext = JSON.parse(pluginResult.stdout).hookSpecificOutput.additionalContext;
+
+  for (const context of [cursorContext, pluginContext]) {
+    assert.match(context, /compound-engineering:ce-strategy/);
+    assert.match(context, /no strategy file yet/);
+  }
+});
