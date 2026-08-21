@@ -41,9 +41,11 @@ and tells you how to install them). Then, in each repo:
 /loomwork:init
 ```
 
-Scaffolds the docs layout, a STRATEGY.md seed, Cursor hook mirrors, and a
-CLAUDE.md block. Idempotent. Non-default paths: create `.loomwork.json`
-(keys `specsDir`, `plansDir`, `strategyFile`) before running init.
+Scaffolds the docs layout, Cursor hook mirrors, and a CLAUDE.md block, then
+points you at `ce-strategy` if the repo has no strategy file yet — that file
+belongs to `ce-strategy`, so loomwork never seeds it. Idempotent. Non-default
+paths: create `.loomwork.json` (keys `specsDir`, `plansDir`, `strategyFile`)
+before running init.
 
 **Re-run `/loomwork:init` after every plugin update.** Cursor reads hooks from
 the workspace `.cursor/`, not from the plugin, so already-initialized repos
@@ -59,8 +61,8 @@ Windows that needs `bash` on PATH (Git Bash or MSYS) — without the explicit
 | Piece | What it does |
 | --- | --- |
 | `loomwork:audit` skill | Drift linter: closed issues on `draft` specs, merged PRs on unbannered plans, missing/stale `verified` dates. Exit 0/1/2. Not a CI gate by design. |
-| `loomwork:close-out` skill | Pre-merge procedure: freeze the plan, verify + update the spec, touch the strategy file — on the feature branch, same PR. |
-| Hook gates (Claude Code) | Inject STRATEGY.md when `brainstorming`/`writing-plans` starts; inject the close-out reminder when `finishing-a-development-branch` starts. |
+| `loomwork:close-out` skill | Pre-merge procedure: freeze the plan, verify + update the spec, and decide whether the ship changed the strategy (a yes routes to `ce-strategy`; close-out itself never writes `STRATEGY.md`) — on the feature branch, same PR. |
+| Hook gates (Claude Code) | Inject STRATEGY.md when `brainstorming`/`writing-plans` starts — or, when the repo has no strategy file, a one-sentence nudge to run `ce-strategy`; inject the close-out reminder when `finishing-a-development-branch` starts. |
 | Cursor hook templates | Same gates for Cursor (written into `.cursor/` by init — Cursor reads hooks from the workspace, so the plugin is the installer, not the runtime). Covers slash-command invocations a Skill-only hook misses. |
 | `/loomwork:init` | Idempotent scaffolder + dependency preflight. |
 
