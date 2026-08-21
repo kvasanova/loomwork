@@ -23,10 +23,13 @@ export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
     }
   }
 
+  // STRATEGY.md belongs to ce-strategy. loomwork never authors or seeds it —
+  // it only reports that it is missing and names the skill that owns it.
   const strategyAbs = path.join(repoRoot, config.strategyFile);
   if (!fs.existsSync(strategyAbs)) {
-    fs.copyFileSync(path.join(pluginRoot, 'templates/STRATEGY.md'), strategyAbs);
-    actions.push(`seeded ${config.strategyFile} (fill it in — ce-strategy can help)`);
+    actions.push(
+      `${config.strategyFile} is missing — run compound-engineering:ce-strategy to author it`,
+    );
   }
 
   const cursorHooksDir = path.join(repoRoot, '.cursor/hooks');

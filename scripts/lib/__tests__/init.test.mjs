@@ -21,7 +21,8 @@ test('initRepo scaffolds a fresh repo and is idempotent', () => {
   assert.ok(fs.existsSync(path.join(root, 'docs/superpowers/specs')));
   assert.ok(fs.existsSync(path.join(root, 'docs/superpowers/plans')));
   assert.ok(fs.existsSync(path.join(root, 'docs/solutions')));
-  assert.ok(fs.existsSync(path.join(root, 'STRATEGY.md')));
+  assert.ok(!fs.existsSync(path.join(root, 'STRATEGY.md')));
+  assert.ok(first.some((a) => a.includes('STRATEGY.md') && a.includes('ce-strategy')));
   assert.ok(fs.existsSync(path.join(root, '.cursor/hooks.json')));
   assert.ok(fs.existsSync(path.join(root, '.cursor/hooks/loomwork-strategy-gate.sh')));
   assert.ok(fs.existsSync(path.join(root, '.cursor/hooks/loomwork-close-out-gate.sh')));
@@ -29,8 +30,10 @@ test('initRepo scaffolds a fresh repo and is idempotent', () => {
   assert.match(claude, /<!-- loomwork:begin -->/);
   assert.match(claude, /<!-- loomwork:end -->/);
 
+  // Second run performs no writes. The missing-strategy-file action persists
+  // by design — the condition is still true until someone runs ce-strategy.
   const second = initRepo(root, PLUGIN_ROOT);
-  assert.deepEqual(second, []);
+  assert.deepEqual(second, [`STRATEGY.md is missing — run compound-engineering:ce-strategy to author it`]);
 });
 
 test('initRepo respects custom paths from .loomwork.json', () => {
@@ -42,7 +45,10 @@ test('initRepo respects custom paths from .loomwork.json', () => {
   initRepo(root, PLUGIN_ROOT);
   assert.ok(fs.existsSync(path.join(root, 'docs/specs')));
   assert.ok(fs.existsSync(path.join(root, 'docs/plans')));
-  assert.ok(fs.existsSync(path.join(root, 'VISION.md')));
+  assert.ok(!fs.existsSync(path.join(root, 'VISION.md')));
+
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(actions.some((a) => a.includes('VISION.md') && a.includes('ce-strategy')));
 });
 
 test('initRepo never overwrites an existing strategy file', () => {
@@ -50,6 +56,22 @@ test('initRepo never overwrites an existing strategy file', () => {
   fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'MY EXISTING STRATEGY\n');
   initRepo(root, PLUGIN_ROOT);
   assert.equal(fs.readFileSync(path.join(root, 'STRATEGY.md'), 'utf8'), 'MY EXISTING STRATEGY\n');
+});
+
+test('initRepo reports the missing strategy file naming ce-strategy', () => {
+  const root = freshRepo();
+  const actions = initRepo(root, PLUGIN_ROOT);
+  const action = actions.find((a) => a.includes('STRATEGY.md'));
+  assert.ok(action, `no strategy action in ${JSON.stringify(actions)}`);
+  assert.match(action, /missing/);
+  assert.match(action, /compound-engineering:ce-strategy/);
+});
+
+test('initRepo reports no strategy action when the strategy file exists', () => {
+  const root = freshRepo();
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'MY EXISTING STRATEGY\n');
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(!actions.some((a) => a.includes('ce-strategy')));
 });
 
 test('initRepo merges into an existing .cursor/hooks.json, preserving foreign entries', () => {
