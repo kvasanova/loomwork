@@ -1,0 +1,21 @@
+{
+  "description": "Loomwork strategy and close-out gates for explicit Codex skill invocations.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${PLUGIN_ROOT}/hooks/strategy-gate.sh\"",
+            "additionalContextLimit": 2500
+          },
+          {
+            "type": "command",
+            "command": "bash \"${PLUGIN_ROOT}/hooks/close-out-gate.sh\"",
+            "additionalContextLimit": 2500
+          }
+        ]
+      }
+    ]
+  }
+}
