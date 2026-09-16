@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "loomwork",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "SDD lifecycle glue for superpowers + compound-engineering: status-frontmatter convention, drift audit, pre-merge close-out, and strategy/close-out hook gates. One loom, one status surface.",
   "author": {
     "name": "Pavlo Kvas"

@@ -5,6 +5,67 @@ All notable changes to loomwork are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-16
+
+loomwork becomes a portable Agent Plugins package. Codex can install and run it
+natively, and the lifecycle gates fire on explicit Codex skill prompts. Claude
+Code and Cursor are unchanged as supported runtimes.
+
+This release also fixes a bug that made the gates fail silently: they matched
+with `echo "$x" | grep -q` under `set -euo pipefail`, where `grep -q` exits on
+its first match and the resulting write failure, combined with `|| exit 0`,
+turned the gate into a no-op — exit 0, no output, strategy never injected. It
+read exactly like a gate that chose not to fire. Reproducing it needs a newline
+after the trigger and a tail past the 64KB pipe buffer; a 200KB prompt dropped
+the injection 10/10. The Cursor mirrors carried the same defect, where it
+mattered more, because `beforeSubmitPrompt` receives the raw user prompt and an
+ordinary pasted log was enough to disable the gate.
+
+### Added
+
+- **Root `plugin.json`** on the Agent Plugins 1.0 schema, selecting the Codex
+  hook registration through `extensions["com.openai"]`. `.claude-plugin/plugin.json`
+  remains as the Claude compatibility manifest, and a test keeps the two
+  identities aligned.
+- **`hooks/codex-hooks.json`** registers both gates on `UserPromptSubmit`.
+  Codex observes explicit `$superpowers:...` prompts only — implicit skill
+  selection produces no signal the gates can identify.
+- **`skills/init/SKILL.md`** exposes the initializer as `loomwork:init`, so
+  initialization no longer requires the Claude-only slash command.
+
+### Changed
+
+- **The shared gates accept both payload shapes** — Claude `PostToolUse` and
+  Codex `UserPromptSubmit` — and echo the incoming event name back in
+  `hookSpecificOutput`.
+- **Root resolution is ordered.** A non-empty `CLAUDE_PROJECT_DIR` is used
+  exactly as given; otherwise the payload's `.cwd` walks up to the nearest
+  `.git` or `.loomwork.json`, since Codex may start in a subdirectory, falling
+  back to the raw `.cwd` so uninitialized repositories still get nudged. `.git`
+  is tested with `-e`, so a worktree's `.git` *file* counts.
+- **The audit and init skills resolve their CLIs relative to the installed
+  `SKILL.md`** instead of requiring a plugin-root environment variable.
+- **A fresh consumer repository now receives `AGENTS.md`**, not `CLAUDE.md`.
+  An existing `AGENTS.md` still wins, an existing `CLAUDE.md` is still
+  supported, and marker-block idempotency is unchanged.
+- **The strategy gate is spill-aware under Codex.** Output past
+  `additionalContextLimit` (2500) is truncated and saved to a file, so the
+  message no longer claims the whole strategy is inline; it points at the saved
+  hook-output file when the host truncated. The Cursor mirror keeps the original
+  wording on purpose — Cursor sets no limit and never spills.
+
+### Fixed
+
+- **Gate matching no longer uses a pipeline.** All matching moved to bash `=~`
+  against an unquoted pattern variable, with `shopt -s nocasematch` preserving
+  the case-insensitivity `grep -qiE` provided in the Cursor gates. Semantics
+  were diffed against the original patterns across representative inputs with
+  zero divergence.
+- **`hooks/close-out-gate.sh` no longer reads `/.loomwork.json`** when no root
+  resolves. It exits silently, matching `hooks/strategy-gate.sh`.
+- **Tests no longer leak an ambient `CLAUDE_PROJECT_DIR`**, which would have
+  made every payload-`.cwd` test pass vacuously.
+
 ## [0.3.0] - 2026-08-21
 
 `STRATEGY.md` belongs to `compound-engineering:ce-strategy`. loomwork reads it,
@@ -56,6 +117,7 @@ the file.
   and could act on an unrelated directory's strategy file. It now requires a
   resolved `CLAUDE_PROJECT_DIR`, matching the Cursor gate.
 
+[0.4.0]: https://github.com/kvasanova/loomwork/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kvasanova/loomwork/releases/tag/v0.3.0
 
 ## [0.2.1] - 2026-08-02
