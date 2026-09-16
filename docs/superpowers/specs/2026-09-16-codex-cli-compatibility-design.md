@@ -1,6 +1,8 @@
 ---
 issue: 3
-status: approved
+status: implemented
+implemented_in: "PR #8"
+verified: 2026-09-16
 ---
 
 # Native Codex plugin compatibility
@@ -141,18 +143,18 @@ modified skills before handoff.
 
 ## Acceptance
 
-- [ ] A root `plugin.json` declares the Agent Plugins 1.0 schema, matches the
+- [x] A root `plugin.json` declares the Agent Plugins 1.0 schema, matches the
       Claude manifest's identity, and points Codex at `hooks/codex-hooks.json`.
-- [ ] Codex discovers `loomwork:init` from `skills/init/SKILL.md`.
-- [ ] A fresh consumer repository receives `AGENTS.md`, not `CLAUDE.md`.
-- [ ] Existing `AGENTS.md`/`CLAUDE.md` selection and marker idempotency remain
+- [x] Codex discovers `loomwork:init` from `skills/init/SKILL.md`.
+- [x] A fresh consumer repository receives `AGENTS.md`, not `CLAUDE.md`.
+- [x] Existing `AGENTS.md`/`CLAUDE.md` selection and marker idempotency remain
       unchanged.
-- [ ] Explicit Codex prompts for brainstorming/writing-plans receive strategy
+- [x] Explicit Codex prompts for brainstorming/writing-plans receive strategy
       context or the existing missing-strategy nudge.
-- [ ] An explicit Codex finishing-a-development-branch prompt receives the
+- [x] An explicit Codex finishing-a-development-branch prompt receives the
       close-out reminder.
-- [ ] Claude `PostToolUse` skill events and Cursor hook tests remain green.
-- [ ] Audit and init skill instructions resolve their CLIs relative to their
+- [x] Claude `PostToolUse` skill events and Cursor hook tests remain green.
+- [x] Audit and init skill instructions resolve their CLIs relative to their
       installed `SKILL.md` paths without plugin-root environment variables.
-- [ ] The full Node test suite passes and SkillSpector reports no static skill
+- [x] The full Node test suite passes and SkillSpector reports no static skill
       findings that block installation.

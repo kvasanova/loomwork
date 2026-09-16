@@ -1,4 +1,5 @@
 # Native Codex Plugin Compatibility Implementation Plan
+> **Status: DONE — shipped in PR #8 (2026-09-16).** Historical record; not maintained.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -37,7 +38,7 @@
 - Consumes: existing package identity from `.claude-plugin/plugin.json`; existing gate entry points `hooks/strategy-gate.sh` and `hooks/close-out-gate.sh`.
 - Produces: canonical portable manifest `plugin.json`; Codex lifecycle config at `hooks/codex-hooks.json`, referenced by `extensions.com.openai.hooks`.
 
-- [ ] **Step 1: Write failing manifest and hook-registration tests**
+- [x] **Step 1: Write failing manifest and hook-registration tests**
 
 Create `scripts/lib/__tests__/plugin.test.mjs`:
 
@@ -88,13 +89,13 @@ test('Codex hooks run both gates before explicit skill prompts', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and verify the missing files fail**
+- [x] **Step 2: Run the test and verify the missing files fail**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs`
 
 Expected: FAIL with `ENOENT` for `plugin.json`.
 
-- [ ] **Step 3: Add the canonical portable manifest**
+- [x] **Step 3: Add the canonical portable manifest**
 
 Create `plugin.json`:
 
@@ -116,7 +117,7 @@ Create `plugin.json`:
 }
 ```
 
-- [ ] **Step 4: Add Codex's prompt lifecycle registration**
+- [x] **Step 4: Add Codex's prompt lifecycle registration**
 
 Create `hooks/codex-hooks.json`:
 
@@ -144,13 +145,13 @@ Create `hooks/codex-hooks.json`:
 }
 ```
 
-- [ ] **Step 5: Run the focused test**
+- [x] **Step 5: Run the focused test**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs`
 
 Expected: PASS with 3 tests.
 
-- [ ] **Step 6: Commit the package entry points**
+- [x] **Step 6: Commit the package entry points**
 
 ```bash
 git add plugin.json hooks/codex-hooks.json scripts/lib/__tests__/plugin.test.mjs
@@ -170,7 +171,7 @@ git commit -m "feat(plugin): add portable Codex package entry point (#3)"
 - Consumes: `UserPromptSubmit` input `{ hook_event_name, prompt, cwd }` from Task 1; existing Claude input `{ hook_event_name: "PostToolUse", tool_name: "Skill", tool_input: { skill } }`.
 - Produces: `hookSpecificOutput.hookEventName` equal to the incoming event and `additionalContext` containing the existing strategy/close-out text.
 
-- [ ] **Step 1: Extend the test helper without changing existing callers**
+- [x] **Step 1: Extend the test helper without changing existing callers**
 
 Replace `runHook` in `scripts/lib/__tests__/hooks.test.mjs` with:
 
@@ -193,7 +194,7 @@ function codexPromptEvent(prompt, cwd) {
 }
 ```
 
-- [ ] **Step 2: Write failing Codex strategy-gate tests**
+- [x] **Step 2: Write failing Codex strategy-gate tests**
 
 Add:
 
@@ -230,7 +231,7 @@ test('strategy-gate ignores unrelated Codex prompts', () => {
 });
 ```
 
-- [ ] **Step 3: Write failing Codex close-out-gate tests**
+- [x] **Step 3: Write failing Codex close-out-gate tests**
 
 Add:
 
@@ -257,13 +258,13 @@ test('close-out-gate ignores unrelated Codex prompts', () => {
 });
 ```
 
-- [ ] **Step 4: Run the focused tests and verify the Codex cases fail**
+- [x] **Step 4: Run the focused tests and verify the Codex cases fail**
 
 Run: `node --test scripts/lib/__tests__/hooks.test.mjs`
 
 Expected: FAIL in the new Codex cases because both gates currently read only `.tool_input.skill`; existing Claude cases remain green.
 
-- [ ] **Step 5: Add dual-event selection and portable root selection to strategy-gate**
+- [x] **Step 5: Add dual-event selection and portable root selection to strategy-gate**
 
 In `hooks/strategy-gate.sh`, replace the `skill` extraction and matcher with:
 
@@ -300,7 +301,7 @@ jq -n --arg event "$event" --arg nudge "$nudge" \
   '{ hookSpecificOutput: { hookEventName: $event, additionalContext: $nudge } }'
 ```
 
-- [ ] **Step 6: Add the same event adapter to close-out-gate**
+- [x] **Step 6: Add the same event adapter to close-out-gate**
 
 In `hooks/close-out-gate.sh`, replace the `skill` extraction and matcher with:
 
@@ -335,7 +336,7 @@ jq -n --arg event "$event" --arg msg "$msg" \
   '{ hookSpecificOutput: { hookEventName: $event, additionalContext: $msg } }'
 ```
 
-- [ ] **Step 7: Run hook and full regression tests**
+- [x] **Step 7: Run hook and full regression tests**
 
 Run: `node --test scripts/lib/__tests__/hooks.test.mjs scripts/lib/__tests__/cursor-hooks.test.mjs`
 
@@ -345,7 +346,7 @@ Run: `node --test scripts/lib/__tests__/*.test.mjs`
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit the dual-runtime gates**
+- [x] **Step 8: Commit the dual-runtime gates**
 
 ```bash
 git add hooks/strategy-gate.sh hooks/close-out-gate.sh scripts/lib/__tests__/hooks.test.mjs
@@ -367,7 +368,7 @@ git commit -m "feat(hooks): support explicit Codex skill prompts (#3)"
 - Consumes: `initRepo(repoRoot, pluginRoot)` and CLI behavior from `scripts/init.mjs`; the installed location of `skills/init/SKILL.md`.
 - Produces: `loomwork:init` as a discoverable skill; fresh-repository memory path `AGENTS.md`; unchanged handling of existing memory files.
 
-- [ ] **Step 1: Write failing tests for the fresh memory file and init skill**
+- [x] **Step 1: Write failing tests for the fresh memory file and init skill**
 
 In the first test in `scripts/lib/__tests__/init.test.mjs`, replace the final memory-file assertions with:
 
@@ -389,14 +390,14 @@ test('init skill exposes a host-neutral skill-relative entry point', () => {
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs scripts/lib/__tests__/plugin.test.mjs`
 
 Expected: FAIL with `ENOENT` for the fresh repository's `AGENTS.md` and for
 the missing `skills/init/SKILL.md`.
 
-- [ ] **Step 3: Change only the no-existing-file default**
+- [x] **Step 3: Change only the no-existing-file default**
 
 In `scripts/init.mjs`, replace:
 
@@ -416,13 +417,13 @@ Update the adjacent comment so it states that existing `AGENTS.md` wins,
 existing `CLAUDE.md` remains supported, and a repository with neither creates
 `AGENTS.md`.
 
-- [ ] **Step 4: Run initialization tests**
+- [x] **Step 4: Run initialization tests**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs`
 
 Expected: PASS, including existing-file precedence, legacy block placement, and idempotency cases.
 
-- [ ] **Step 5: Add the init skill**
+- [x] **Step 5: Add the init skill**
 
 Create `skills/init/SKILL.md` with this complete workflow:
 
@@ -483,7 +484,7 @@ Relay the script's action list, mention that Codex users must review and trust
 plugin hooks through `/hooks`, and suggest committing newly created files.
 ````
 
-- [ ] **Step 6: Align the Claude command wording**
+- [x] **Step 6: Align the Claude command wording**
 
 In `commands/init.md`:
 
@@ -491,7 +492,7 @@ In `commands/init.md`:
 - Change Step 2's output description from `a marker-guarded loomwork block in CLAUDE.md (or AGENTS.md)` to `a marker-guarded loomwork block in AGENTS.md (or an existing CLAUDE.md)`.
 - Keep the command's `${CLAUDE_PLUGIN_ROOT}` invocation because this file remains the Claude-specific command surface.
 
-- [ ] **Step 7: Scan the skill and rerun the full suite**
+- [x] **Step 7: Scan the skill and rerun the full suite**
 
 Run:
 
@@ -503,7 +504,7 @@ node --test scripts/lib/__tests__/*.test.mjs
 Expected: SkillSpector reports no blocking static finding and the full Node
 suite passes, including the new skill metadata/path test.
 
-- [ ] **Step 8: Commit the portable initializer**
+- [x] **Step 8: Commit the portable initializer**
 
 ```bash
 git add skills/init/SKILL.md scripts/init.mjs scripts/lib/__tests__/init.test.mjs scripts/lib/__tests__/plugin.test.mjs commands/init.md
@@ -522,7 +523,7 @@ git commit -m "feat(init): add portable loomwork init skill (#3)"
 - Consumes: the installed location of `skills/audit/SKILL.md`.
 - Produces: portable instructions that invoke `scripts/sdd-audit.mjs` by resolving it from the skill file while keeping the consumer repository as `cwd`.
 
-- [ ] **Step 1: Write the failing audit-skill portability test**
+- [x] **Step 1: Write the failing audit-skill portability test**
 
 Add this case to `scripts/lib/__tests__/plugin.test.mjs`:
 
@@ -534,14 +535,14 @@ test('audit skill resolves its CLI relative to the installed skill', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and verify the Claude-only command fails**
+- [x] **Step 2: Run the test and verify the Claude-only command fails**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs`
 
 Expected: FAIL because the current audit skill contains
 `${CLAUDE_PLUGIN_ROOT}/scripts/sdd-audit.mjs` and no skill-relative path.
 
-- [ ] **Step 3: Replace the audit command with skill-relative resolution**
+- [x] **Step 3: Replace the audit command with skill-relative resolution**
 
 In `skills/audit/SKILL.md`, replace the sentence and command under `## Run`
 with:
@@ -567,7 +568,7 @@ to this command.
 Change the final error-code explanation from `means run /loomwork:init` to
 `means run loomwork:init` so it applies to both slash-command and skill syntax.
 
-- [ ] **Step 4: Scan both changed skills**
+- [x] **Step 4: Scan both changed skills**
 
 Run:
 
@@ -578,7 +579,7 @@ skillspector scan skills/audit --no-llm
 
 Expected: both scans complete with no blocking static finding.
 
-- [ ] **Step 5: Run skill and audit CLI regression tests**
+- [x] **Step 5: Run skill and audit CLI regression tests**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs scripts/lib/__tests__/cli.test.mjs scripts/lib/__tests__/config.test.mjs`
 
@@ -586,7 +587,7 @@ Expected: PASS. The skill test proves host-neutral lookup; the CLI tests prove
 the underlying command still resolves consumer repositories by explicit Claude
 override or by walking upward from `cwd`.
 
-- [ ] **Step 6: Commit the portable audit invocation**
+- [x] **Step 6: Commit the portable audit invocation**
 
 ```bash
 git add skills/audit/SKILL.md scripts/lib/__tests__/plugin.test.mjs
@@ -608,7 +609,7 @@ git commit -m "fix(skills): resolve audit script in Codex and Claude (#3)"
 - Consumes: manifest, hooks, skill invocation, and initialization behavior delivered by Tasks 1–4.
 - Produces: user-facing installation guidance and contributor invariants that accurately describe all three runtimes.
 
-- [ ] **Step 1: Update README installation and shipped-surface documentation**
+- [x] **Step 1: Update README installation and shipped-surface documentation**
 
 Make these concrete edits in `README.md`:
 
@@ -627,7 +628,7 @@ codex plugin add loomwork@toolshed
 - Add the trust requirement: Codex skips plugin-bundled hooks until the user reviews and trusts them through `/hooks`.
 - Keep the Cursor refresh and Windows `bash` guidance unchanged.
 
-- [ ] **Step 2: Update contributor runtime invariants**
+- [x] **Step 2: Update contributor runtime invariants**
 
 In `AGENTS.md`:
 
@@ -641,14 +642,14 @@ plugin with wording that it is a portable plugin retaining Claude-specific
 runtime surfaces. Keep its Claude environment-variable details because they
 remain relevant to Claude sessions.
 
-- [ ] **Step 3: Update the playbook runtime table**
+- [x] **Step 3: Update the playbook runtime table**
 
 In `references/PLAYBOOK.md`, extend the strategy and close-out hook rows to
 include Codex's `hooks/codex-hooks.json → UserPromptSubmit` path and its explicit
 `$superpowers:...` limitation. Do not change the doctrine, lifecycle statuses,
 or `STRATEGY.md` ownership rules.
 
-- [ ] **Step 4: Run static skill security scanning**
+- [x] **Step 4: Run static skill security scanning**
 
 Run: `skillspector scan skills/ --no-llm`
 
@@ -657,7 +658,7 @@ credential-exfiltration finding may remain unexplained. If the scanner flags
 the documented shell commands, confirm they are limited to the plugin's own
 scripts and the current consumer repository.
 
-- [ ] **Step 5: Run final verification**
+- [x] **Step 5: Run final verification**
 
 Run:
 
@@ -676,7 +677,7 @@ Expected:
 - `git diff --check` exits `0` with no whitespace errors.
 - `git status --short` lists only the issue #3 implementation and its spec/plan artifacts.
 
-- [ ] **Step 6: Check acceptance criteria line by line**
+- [x] **Step 6: Check acceptance criteria line by line**
 
 Run:
 
@@ -695,14 +696,14 @@ Expected: every command exits `0`. Then compare the spec's nine acceptance
 checkboxes against the test and scan output; leave any unmet item unchecked for
 close-out rather than weakening the criterion.
 
-- [ ] **Step 7: Commit documentation and implementation records**
+- [x] **Step 7: Commit documentation and implementation records**
 
 ```bash
 git add README.md AGENTS.md CLAUDE.md references/PLAYBOOK.md docs/superpowers/specs/2026-09-16-codex-cli-compatibility-design.md docs/superpowers/plans/2026-09-16-codex-cli-compatibility.md
 git commit -m "docs: document native Codex compatibility (#3)"
 ```
 
-- [ ] **Step 8: Prepare close-out after a PR exists**
+- [x] **Step 8: Prepare close-out after a PR exists**
 
 After pushing and opening the feature PR, invoke `loomwork:close-out` with issue
 `#3`, this plan, and the paired spec. The close-out commit must add the plan's
