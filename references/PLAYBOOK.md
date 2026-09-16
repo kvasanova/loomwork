@@ -207,10 +207,19 @@ three harnesses ship in-repo — edit the matching config when changing behavior
 | **STRATEGY.md** | `brainstorming`, `writing-plans` | loomwork plugin `hooks/hooks.json` → `PostToolUse` + `Skill` matcher (ships with the plugin) | `hooks/codex-hooks.json` → `UserPromptSubmit`; explicit `$superpowers:brainstorming` and `$superpowers:writing-plans` prompts only | `.cursor/hooks.json` → `loomwork-strategy-gate.sh` (written by `/loomwork:init`) — `beforeSubmitPrompt` (slash commands) + `postToolUse` on `Read`/`Skill` |
 | **Close-out** | `finishing-a-development-branch` | loomwork plugin `hooks/hooks.json` → `PostToolUse` + `Skill` matcher (ships with the plugin) | `hooks/codex-hooks.json` → `UserPromptSubmit`; explicit `$superpowers:finishing-a-development-branch` prompts only | `.cursor/hooks.json` → `loomwork-close-out-gate.sh` (written by `/loomwork:init`) — same events |
 
-**Strategy gate, all three harnesses:** with a strategy file present, inject its full
+**Strategy gate, all three harnesses:** with a strategy file present, inject its
 content and tell the agent not to open the file. With no strategy file, inject a
 one-sentence nudge to run `ce-strategy`. The gate checks existence only — it
 never inspects the file's shape.
+
+**Codex truncation:** Codex caps injected context at `additionalContextLimit`
+(2500) and spills the remainder to a file. The plugin gate's message therefore
+tells the agent to read that saved hook-output file when its host truncated the
+output, instead of claiming the whole strategy is inline. The Cursor mirror
+keeps the plain "full content is already injected" wording on purpose: Cursor
+sets no limit and never spills, so the spill instruction would point at a file
+that does not exist. The two prefixes are deliberately not byte-identical — if
+Cursor ever gains an output limit, its gate needs the same edit.
 
 **Claude Code:** the gates ship with the plugin — no repo-local hook config needed.
 
