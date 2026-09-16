@@ -165,3 +165,70 @@ test('both strategy gates name ce-strategy on the missing-file path, each in its
     assert.match(context, /no strategy file yet/);
   }
 });
+
+// Long-prompt regressions for the Cursor mirrors. These gates matched with
+// `echo "$prompt" | grep -qiE`, where grep's early exit closes the pipe while
+// echo is still writing; under `set -o pipefail` the gate then exited 0 with no
+// output — a silent no-op. `beforeSubmitPrompt` carries the RAW user prompt, so
+// a pasted log was enough to disable the gate.
+//
+// Both conditions are required, measured against the pre-fix Cursor gates:
+// a NEWLINE after the trigger (single-line never reproduced at any size) and a
+// tail past the 64KB pipe buffer (64KB -> 0/10 dropped, 128KB -> 10/10).
+const CURSOR_LONG_TAIL = `\n${'padding-text-to-force-a-large-pipe-buffer '.repeat(
+  Math.ceil((192 * 1024) / 42),
+)}`;
+
+test('cursor strategy gate survives a pasted multi-kilobyte prompt', () => {
+  const root = strategyRepo();
+  const prompt = `brainstorming${CURSOR_LONG_TAIL}`;
+  assert.ok(prompt.includes('\n'), 'the trigger must be followed by a newline');
+  assert.ok(prompt.length > 128 * 1024);
+  const result = runHook('loomwork-strategy-gate.sh', {
+    hook_event_name: 'beforeSubmitPrompt',
+    prompt,
+    workspace_roots: [root],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).additional_context, /cursor-marker-9/);
+});
+
+test('cursor close-out gate survives a pasted multi-kilobyte prompt', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-cursor-'));
+  const prompt = `finishing-a-development-branch${CURSOR_LONG_TAIL}`;
+  assert.ok(prompt.includes('\n'), 'the trigger must be followed by a newline');
+  assert.ok(prompt.length > 128 * 1024);
+  const result = runHook('loomwork-close-out-gate.sh', {
+    hook_event_name: 'beforeSubmitPrompt',
+    prompt,
+    workspace_roots: [root],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).additional_context, /loomwork:close-out/);
+});
+
+test('cursor strategy gate keeps case-insensitive prompt matching', () => {
+  const root = strategyRepo();
+  for (const prompt of ['Brainstorming the design', 'BRAINSTORMING', '/Writing-Plans foo.md']) {
+    const result = runHook('loomwork-strategy-gate.sh', {
+      hook_event_name: 'beforeSubmitPrompt',
+      prompt,
+      workspace_roots: [root],
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(JSON.parse(result.stdout).additional_context, /cursor-marker-9/, prompt);
+  }
+});
+
+test('cursor strategy gate still requires a word boundary', () => {
+  const root = strategyRepo();
+  for (const prompt of ['mybrainstorming', 'brainstormingx']) {
+    const result = runHook('loomwork-strategy-gate.sh', {
+      hook_event_name: 'beforeSubmitPrompt',
+      prompt,
+      workspace_roots: [root],
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), '', prompt);
+  }
+});

@@ -1,5 +1,5 @@
 ---
-description: Scaffold the SDD layout (docs dirs, Cursor hooks, CLAUDE.md block) in the current repo
+description: Scaffold the SDD layout (docs dirs, Cursor hooks, AGENTS.md/CLAUDE.md block) in the current repo
 ---
 
 # /loomwork:init
@@ -35,8 +35,8 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/init.mjs"
 
 It creates (only what is missing): the specs/plans/solutions directories,
 `.cursor/hooks.json` + `.cursor/hooks/loomwork-*.sh` (merging with existing
-Cursor hooks), and a marker-guarded loomwork block in CLAUDE.md (or
-AGENTS.md). It never creates the strategy file — that file belongs to
+Cursor hooks), and a marker-guarded loomwork block in AGENTS.md (or an existing
+CLAUDE.md). It never creates the strategy file — that file belongs to
 `ce-strategy`; the scaffolder only reports when it is missing. Paths come
 from `.loomwork.json` if present, defaults otherwise. If the user wants
 non-default paths, write `.loomwork.json` (keys: `specsDir`, `plansDir`,

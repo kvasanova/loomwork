@@ -17,11 +17,21 @@ still shows `draft` or unticked plan boxes. **Not** a CI gate.
 
 ## Run
 
-From anywhere inside the consumer repo:
+From anywhere inside the consumer repository, resolve
+`../../scripts/sdd-audit.mjs` relative to the directory containing this
+installed `SKILL.md`. Execute the resolved absolute path with the consumer
+repository as the command working directory:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/sdd-audit.mjs"
+node ../../scripts/sdd-audit.mjs
 ```
+
+The command above names a skill-relative resource, not a path relative to the
+shell's working directory. Resolve it to an absolute path from this `SKILL.md`
+before executing it, while leaving the shell working directory at the consumer
+repository. Do not look up the plugin from the consumer repository and do not
+require a plugin-root environment variable. Append any requested audit flags
+to this command.
 
 Flags:
 - `--offline` — skip `gh` issue/PR checks (file-only: verified missing/stale)
@@ -42,7 +52,7 @@ Spec/plan paths come from `.loomwork.json` at the repo root (defaults:
 | `SPEC_VERIFIED_STALE` | `verified` older than threshold | Re-run acceptance verification; bump date |
 
 Exit `0` = clean, `1` = drift found, `2` = script error (`not initialized`
-means run `/loomwork:init`).
+means run `loomwork:init`).
 
 ## After fixing
 
