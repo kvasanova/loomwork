@@ -8,12 +8,18 @@ import { spawnSync } from 'node:child_process';
 
 const HOOKS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../hooks');
 
+// CLAUDE_PROJECT_DIR is controlled explicitly: an ambient value in the
+// developer's shell would otherwise leak in and mask the payload-.cwd paths.
 function runHook(script, stdinObj, projectDir) {
-  const projectEnv = projectDir ? { CLAUDE_PROJECT_DIR: projectDir } : {};
+  const env = { ...process.env };
+  delete env.CLAUDE_PROJECT_DIR;
+  if (projectDir) {
+    env.CLAUDE_PROJECT_DIR = projectDir;
+  }
   return spawnSync('bash', [path.join(HOOKS_DIR, script)], {
     input: JSON.stringify(stdinObj),
     encoding: 'utf8',
-    env: { ...process.env, ...projectEnv },
+    env,
   });
 }
 
@@ -41,7 +47,20 @@ test('strategy-gate tells agents not to open the strategy file', () => {
   const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming'), root);
   const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
   assert.match(context, /do NOT Read or open the strategy file/);
+  assert.match(context, /any loomwork hook script/);
   assert.doesNotMatch(context, /read it before/i);
+});
+
+test('strategy-gate points at the saved hook-output file instead of claiming full inline content', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'content-marker-42\n');
+  const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming'), root);
+  const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  // Codex truncates output past additionalContextLimit and spills it to a file,
+  // so the gate must not assert that everything is inline.
+  assert.doesNotMatch(context, /full content is already injected/);
+  assert.match(context, /truncated/);
+  assert.match(context, /saved hook-output file/);
 });
 
 test('strategy-gate honors custom strategyFile from .loomwork.json', () => {
@@ -172,4 +191,162 @@ test('close-out-gate ignores unrelated Codex prompts', () => {
   const result = runHook('close-out-gate.sh', codexPromptEvent('$superpowers:brainstorming', root));
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), '');
+});
+
+// Long-prompt regressions: the gates once matched with `echo | grep -q`, where
+// grep's early exit can kill echo with SIGPIPE and, under `set -o pipefail`,
+// poison the pipeline status. A multi-kilobyte prompt makes that race likely.
+const LONG_TAIL = ` ${'padding-text-to-force-a-large-pipe-buffer '.repeat(2000)}`;
+
+test('strategy-gate survives a multi-kilobyte Codex prompt', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'long-prompt-marker\n');
+  const prompt = `$superpowers:brainstorming${LONG_TAIL}`;
+  assert.ok(prompt.length > 64 * 1024);
+  const result = runHook('strategy-gate.sh', codexPromptEvent(prompt, root));
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout);
+  assert.equal(out.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  assert.match(out.hookSpecificOutput.additionalContext, /long-prompt-marker/);
+});
+
+test('close-out-gate survives a multi-kilobyte Codex prompt', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ plansDir: 'docs/plans' }));
+  const prompt = `$superpowers:finishing-a-development-branch${LONG_TAIL}`;
+  assert.ok(prompt.length > 64 * 1024);
+  const result = runHook('close-out-gate.sh', codexPromptEvent(prompt, root));
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout);
+  assert.equal(out.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  assert.match(out.hookSpecificOutput.additionalContext, /docs\/plans/);
+});
+
+test('strategy-gate stays silent on a long prompt that does not name a gated skill', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'x\n');
+  const result = runHook('strategy-gate.sh', codexPromptEvent(`refactor the parser${LONG_TAIL}`, root));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('strategy-gate requires the literal $ before superpowers', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'x\n');
+  const result = runHook('strategy-gate.sh', codexPromptEvent('superpowers:brainstorming please', root));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('strategy-gate does not match a skill name with a trailing suffix', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'x\n');
+  const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming-extra'), root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('close-out-gate does not match a prompt with a trailing word character', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  const result = runHook(
+    'close-out-gate.sh',
+    codexPromptEvent('$superpowers:finishing-a-development-branches', root),
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
+// --- Root resolution (Codex .cwd walks up; CLAUDE_PROJECT_DIR does not) ---
+
+function makeRepo(prefix, marker) {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+  fs.mkdirSync(path.join(root, marker), { recursive: true });
+  return root;
+}
+
+test('strategy-gate walks up from a nested .cwd to the .git marker', () => {
+  const root = makeRepo('loomwork-hook-walk-', '.git');
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'walked-up-marker\n');
+  const nested = path.join(root, 'a/b/c');
+  fs.mkdirSync(nested, { recursive: true });
+  const result = runHook('strategy-gate.sh', codexPromptEvent('$superpowers:brainstorming', nested));
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /walked-up-marker/);
+});
+
+test('strategy-gate walks up from a nested .cwd to the .loomwork.json marker', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-walk-')));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ strategyFile: 'docs/VISION.md' }));
+  fs.mkdirSync(path.join(root, 'docs'));
+  fs.writeFileSync(path.join(root, 'docs/VISION.md'), 'nested-vision-marker\n');
+  const nested = path.join(root, 'x/y');
+  fs.mkdirSync(nested, { recursive: true });
+  const result = runHook('strategy-gate.sh', codexPromptEvent('$superpowers:writing-plans', nested));
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /nested-vision-marker/);
+});
+
+test('strategy-gate falls back to the raw .cwd when no marker is found', () => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-nomarker-')));
+  const result = runHook('strategy-gate.sh', codexPromptEvent('$superpowers:brainstorming', dir));
+  assert.equal(result.status, 0, result.stderr);
+  // No marker anywhere up the tree, so the nudge still fires for the raw cwd.
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /no strategy file yet/);
+});
+
+test('strategy-gate uses CLAUDE_PROJECT_DIR exactly, without walking up', () => {
+  const root = makeRepo('loomwork-hook-exact-', '.git');
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'ancestor-strategy-should-not-be-used\n');
+  const nested = path.join(root, 'sub');
+  fs.mkdirSync(nested);
+  const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming'), nested);
+  assert.equal(result.status, 0, result.stderr);
+  const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  assert.match(context, /no strategy file yet/);
+  assert.doesNotMatch(context, /ancestor-strategy-should-not-be-used/);
+});
+
+test('close-out-gate walks up from a nested .cwd to the .loomwork.json marker', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-walk-')));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ plansDir: 'docs/nested-plans' }));
+  const nested = path.join(root, 'deep/er');
+  fs.mkdirSync(nested, { recursive: true });
+  const result = runHook(
+    'close-out-gate.sh',
+    codexPromptEvent('$superpowers:finishing-a-development-branch', nested),
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /docs\/nested-plans/);
+});
+
+test('close-out-gate uses CLAUDE_PROJECT_DIR exactly, without walking up', () => {
+  const root = makeRepo('loomwork-hook-exact-', '.git');
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ plansDir: 'docs/ancestor-plans' }));
+  const nested = path.join(root, 'sub');
+  fs.mkdirSync(nested);
+  const result = runHook(
+    'close-out-gate.sh',
+    skillEvent('superpowers:finishing-a-development-branch'),
+    nested,
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  assert.doesNotMatch(context, /docs\/ancestor-plans/);
+  assert.match(context, /docs\/superpowers\/plans/);
+});
+
+test('close-out-gate stays silent when neither CLAUDE_PROJECT_DIR nor cwd resolves', () => {
+  const result = runHook('close-out-gate.sh', skillEvent('superpowers:finishing-a-development-branch'));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('close-out-gate falls back to the raw .cwd when no marker is found', () => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-nomarker-')));
+  const result = runHook(
+    'close-out-gate.sh',
+    codexPromptEvent('$superpowers:finishing-a-development-branch', dir),
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /docs\/superpowers\/plans/);
 });
