@@ -139,3 +139,36 @@ test('initRepo appends to AGENTS.md when CLAUDE.md is absent and AGENTS.md exist
   assert.match(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /<!-- loomwork:begin -->/);
   assert.ok(!fs.existsSync(path.join(root, 'CLAUDE.md')));
 });
+
+test('initRepo prefers AGENTS.md over CLAUDE.md when both exist', () => {
+  const root = freshRepo();
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), '# Agents\n');
+  fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# Claude\n');
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.match(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /<!-- loomwork:begin -->/);
+  assert.equal(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), '# Claude\n');
+  assert.ok(actions.some((a) => a.includes('AGENTS.md')));
+});
+
+test('initRepo leaves an existing block in CLAUDE.md alone instead of copying it to AGENTS.md', () => {
+  const root = freshRepo();
+  fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# Claude\n');
+  initRepo(root, PLUGIN_ROOT);
+  const claudeAfterFirst = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
+  assert.match(claudeAfterFirst, /<!-- loomwork:begin -->/);
+
+  // AGENTS.md shows up later; the block must not be duplicated into it.
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), '# Agents\n');
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.equal(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), '# Agents\n');
+  assert.equal(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), claudeAfterFirst);
+  assert.ok(!actions.some((a) => a.includes('appended loomwork block')));
+});
+
+test('initRepo appends to CLAUDE.md when it is the only memory file', () => {
+  const root = freshRepo();
+  fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# Claude\n');
+  initRepo(root, PLUGIN_ROOT);
+  assert.match(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), /<!-- loomwork:begin -->/);
+  assert.ok(!fs.existsSync(path.join(root, 'AGENTS.md')));
+});
