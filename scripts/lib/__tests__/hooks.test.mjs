@@ -193,16 +193,31 @@ test('close-out-gate ignores unrelated Codex prompts', () => {
   assert.equal(result.stdout.trim(), '');
 });
 
-// Long-prompt regressions: the gates once matched with `echo | grep -q`, where
-// grep's early exit can kill echo with SIGPIPE and, under `set -o pipefail`,
-// poison the pipeline status. A multi-kilobyte prompt makes that race likely.
-const LONG_TAIL = ` ${'padding-text-to-force-a-large-pipe-buffer '.repeat(2000)}`;
+// Long-prompt regressions: the gates once matched with `echo | grep -q`. Once
+// grep matches it exits immediately, closing the pipe while echo is still
+// writing; echo then fails and `set -o pipefail` propagates that status, so
+// `|| exit 0` turned the failure into a SILENT SUCCESS — exit 0, no output,
+// strategy never injected.
+//
+// Reproducing it needs both conditions, verified against the pre-fix gate:
+//   * a NEWLINE after the trigger, so grep can complete a line and exit early
+//     while echo still has the tail to write. A single-line prompt never
+//     reproduced at any size (0/10 at 64KB, 128KB and 200KB).
+//   * a tail past the 64KB pipe buffer. Measured: 64KB -> 0/10 dropped,
+//     128KB -> 10/10 dropped.
+// A tail that is large but single-line passes against the OLD gate too
+// (0/20 at 84KB), which would make this guard inert.
+const LONG_TAIL_BYTES = 192 * 1024;
+const LONG_TAIL = `\n${'padding-text-to-force-a-large-pipe-buffer '.repeat(
+  Math.ceil(LONG_TAIL_BYTES / 42),
+)}`;
 
 test('strategy-gate survives a multi-kilobyte Codex prompt', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
   fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'long-prompt-marker\n');
   const prompt = `$superpowers:brainstorming${LONG_TAIL}`;
-  assert.ok(prompt.length > 64 * 1024);
+  assert.ok(prompt.includes('\n'), 'the trigger must be followed by a newline');
+  assert.ok(prompt.length > 128 * 1024);
   const result = runHook('strategy-gate.sh', codexPromptEvent(prompt, root));
   assert.equal(result.status, 0, result.stderr);
   const out = JSON.parse(result.stdout);
@@ -214,7 +229,8 @@ test('close-out-gate survives a multi-kilobyte Codex prompt', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
   fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ plansDir: 'docs/plans' }));
   const prompt = `$superpowers:finishing-a-development-branch${LONG_TAIL}`;
-  assert.ok(prompt.length > 64 * 1024);
+  assert.ok(prompt.includes('\n'), 'the trigger must be followed by a newline');
+  assert.ok(prompt.length > 128 * 1024);
   const result = runHook('close-out-gate.sh', codexPromptEvent(prompt, root));
   assert.equal(result.status, 0, result.stderr);
   const out = JSON.parse(result.stdout);
