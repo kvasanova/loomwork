@@ -15,18 +15,28 @@ should_fire=false
 case "$event" in
   beforeSubmitPrompt)
     prompt=$(echo "$input" | jq -r '.prompt // empty')
-    if echo "$prompt" | grep -qiE '(^|[[:space:]/])(writing-plans|brainstorming)([[:space:]/:]|$)'; then
+    # Matched with bash's =~, never `echo | grep -q`: grep exits on its first
+    # match, and the resulting write failure under `set -o pipefail` made the
+    # gate exit 0 with no output — a silent no-op. This event carries raw user
+    # prompts, so a pasted log past the 64KB pipe buffer was enough to trigger
+    # it (measured: 200KB dropped the injection 10/10).
+    prompt_re='(^|[[:space:]/])(writing-plans|brainstorming)([[:space:]/:]|$)'
+    shopt -s nocasematch
+    if [[ "$prompt" =~ $prompt_re ]]; then
       should_fire=true
     fi
+    shopt -u nocasematch
     ;;
   postToolUse)
     tool=$(echo "$input" | jq -r '.tool_name // empty')
     skill=$(echo "$input" | jq -r '.tool_input.skill // empty')
     path=$(echo "$input" | jq -r '.tool_input.path // .tool_input.file_path // empty')
 
-    if [[ "$tool" == "Skill" ]] && echo "$skill" | grep -qE 'brainstorming|writing-plans'; then
+    skill_re='brainstorming|writing-plans'
+    path_re='(writing-plans|brainstorming)/SKILL\.md'
+    if [[ "$tool" == "Skill" && "$skill" =~ $skill_re ]]; then
       should_fire=true
-    elif [[ "$tool" == "Read" ]] && echo "$path" | grep -qE '(writing-plans|brainstorming)/SKILL\.md'; then
+    elif [[ "$tool" == "Read" && "$path" =~ $path_re ]]; then
       should_fire=true
     fi
     ;;
