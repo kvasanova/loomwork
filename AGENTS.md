@@ -4,7 +4,7 @@
 
 Loomwork integrates superpowers and compound-engineering workflows. `scripts/` contains the Node.js entry points (`init.mjs`, `sdd-audit.mjs`); `scripts/lib/` holds configuration, parsing, pairing, GitHub access, rules, and reporting. Tests and Markdown fixtures live in `scripts/lib/__tests__/`.
 
-`hooks/` contains Claude Code gates; `templates/cursor/` contains their Cursor counterparts. Other scaffolding assets live in `templates/`. Plugin metadata is in `.claude-plugin/plugin.json`, command instructions in `commands/`, and skills in `skills/`. See `references/PLAYBOOK.md` for lifecycle conventions and `docs/superpowers/{specs,plans}/` for design records.
+`hooks/` contains shared Claude Code and Codex gates plus their runtime registrations; `templates/cursor/` contains the Cursor counterparts. Other scaffolding assets live in `templates/`. The portable manifest is `plugin.json`; `.claude-plugin/plugin.json` is the Claude compatibility manifest. Command instructions live in `commands/`, and skills in `skills/`. See `references/PLAYBOOK.md` for lifecycle conventions and `docs/superpowers/{specs,plans}/` for design records.
 
 ## This is a plugin, not an application
 
@@ -34,11 +34,11 @@ The audit pipeline is a straight line: `config → parse → pair → rules → 
 
 `parse.mjs` hand-rolls frontmatter parsing with a regex (`^([a-z_]+):\s*(.*)$`) and takes no YAML dependency. Nested or multiline frontmatter will not parse.
 
-## Hooks: two runtimes, one behavior
+## Hooks: three runtimes, one behavior
 
-Claude Code reads `hooks/hooks.json` from the plugin at runtime. **Cursor does not** — it reads `.cursor/hooks.json` from the workspace, so `scripts/init.mjs` is the installer for the Cursor copies. A change to `templates/cursor/*` therefore reaches an already-initialized repository only when the user re-runs init. `init.mjs` migrates entries in place, rewriting stale `command` and `matcher` values rather than appending duplicates.
+Claude Code reads `hooks/hooks.json` as its `PostToolUse` registration. Codex reads `hooks/codex-hooks.json` as its `UserPromptSubmit` registration and can therefore observe only explicit `$superpowers:...` prompts. **Cursor does not read either plugin registration** — it reads `.cursor/hooks.json` from the workspace, so `scripts/init.mjs` is the installer for the Cursor copies. A change to `templates/cursor/*` therefore reaches an already-initialized repository only when the user re-runs init. `init.mjs` migrates entries in place, rewriting stale `command` and `matcher` values rather than appending duplicates.
 
-Both `hooks.json` files match broadly on the `Skill` tool and discriminate on skill name **inside the script**, via `jq` on `.tool_input.skill`. Keep matching there, not in the matcher.
+The Claude and Cursor `hooks.json` files match broadly on the `Skill` tool and discriminate on skill name **inside the script**, via `jq` on `.tool_input.skill`. Keep matching there, not in the matcher. The shared gate scripts accept both Claude `PostToolUse` and Codex `UserPromptSubmit` payloads, derive Codex's consumer root from `.cwd` when `CLAUDE_PROJECT_DIR` is unavailable, and emit the incoming event name in `hookSpecificOutput`.
 
 Cursor commands must be spelled `bash .cursor/hooks/loomwork-*.sh`. A bare `.sh` path makes Cursor open the file in an editor tab on Windows instead of executing it.
 

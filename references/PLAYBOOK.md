@@ -199,20 +199,24 @@ re-trigger mid-workflow, so the hook is the deterministic nudge.
 
 ## Hook enforcement
 
-SDD gates inject reminders so agents don't rely on memory mid-workflow. Both
-harnesses ship in-repo — edit the matching config when changing behavior.
+SDD gates inject reminders so agents don't rely on memory mid-workflow. All
+three harnesses ship in-repo — edit the matching config when changing behavior.
 
-| Gate | Skill trigger | Claude Code | Cursor |
-| --- | --- | --- | --- |
-| **STRATEGY.md** | `brainstorming`, `writing-plans` | loomwork plugin hooks/hooks.json — PostToolUse + Skill matcher (ships with the plugin) | .cursor/hooks.json → loomwork-strategy-gate.sh (written by /loomwork:init) — `beforeSubmitPrompt` (slash commands) + `postToolUse` on `Read`/`Skill` |
-| **Close-out** | `finishing-a-development-branch` | loomwork plugin hooks/hooks.json — PostToolUse + Skill matcher (ships with the plugin) | .cursor/hooks.json → loomwork-close-out-gate.sh (written by /loomwork:init) — same events |
+| Gate | Skill trigger | Claude Code | Codex | Cursor |
+| --- | --- | --- | --- | --- |
+| **STRATEGY.md** | `brainstorming`, `writing-plans` | loomwork plugin `hooks/hooks.json` → `PostToolUse` + `Skill` matcher (ships with the plugin) | `hooks/codex-hooks.json` → `UserPromptSubmit`; explicit `$superpowers:brainstorming` and `$superpowers:writing-plans` prompts only | `.cursor/hooks.json` → `loomwork-strategy-gate.sh` (written by `/loomwork:init`) — `beforeSubmitPrompt` (slash commands) + `postToolUse` on `Read`/`Skill` |
+| **Close-out** | `finishing-a-development-branch` | loomwork plugin `hooks/hooks.json` → `PostToolUse` + `Skill` matcher (ships with the plugin) | `hooks/codex-hooks.json` → `UserPromptSubmit`; explicit `$superpowers:finishing-a-development-branch` prompts only | `.cursor/hooks.json` → `loomwork-close-out-gate.sh` (written by `/loomwork:init`) — same events |
 
-**Strategy gate, both harnesses:** with a strategy file present, inject its full
+**Strategy gate, all three harnesses:** with a strategy file present, inject its full
 content and tell the agent not to open the file. With no strategy file, inject a
 one-sentence nudge to run `ce-strategy`. The gate checks existence only — it
 never inspects the file's shape.
 
 **Claude Code:** the gates ship with the plugin — no repo-local hook config needed.
+
+**Codex:** the gates ship with the plugin and observe explicit
+`$superpowers:...` prompts only; implicit skill selection does not produce a
+`UserPromptSubmit` signal the gates can identify.
 
 ## Where artifacts live
 
