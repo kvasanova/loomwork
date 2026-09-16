@@ -49,3 +49,9 @@ test('init skill exposes a host-neutral skill-relative entry point', () => {
   assert.match(skill, /\.\.\/\.\.\/scripts\/init\.mjs/);
   assert.doesNotMatch(skill, /PLUGIN_ROOT|CLAUDE_PLUGIN_ROOT/);
 });
+
+test('audit skill resolves its CLI relative to the installed skill', () => {
+  const skill = fs.readFileSync(path.join(ROOT, 'skills/audit/SKILL.md'), 'utf8');
+  assert.match(skill, /\.\.\/\.\.\/scripts\/sdd-audit\.mjs/);
+  assert.doesNotMatch(skill, /PLUGIN_ROOT|CLAUDE_PLUGIN_ROOT/);
+});
