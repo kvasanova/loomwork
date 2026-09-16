@@ -26,9 +26,10 @@ test('initRepo scaffolds a fresh repo and is idempotent', () => {
   assert.ok(fs.existsSync(path.join(root, '.cursor/hooks.json')));
   assert.ok(fs.existsSync(path.join(root, '.cursor/hooks/loomwork-strategy-gate.sh')));
   assert.ok(fs.existsSync(path.join(root, '.cursor/hooks/loomwork-close-out-gate.sh')));
-  const claude = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
-  assert.match(claude, /<!-- loomwork:begin -->/);
-  assert.match(claude, /<!-- loomwork:end -->/);
+  const agents = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.match(agents, /<!-- loomwork:begin -->/);
+  assert.match(agents, /<!-- loomwork:end -->/);
+  assert.ok(!fs.existsSync(path.join(root, 'CLAUDE.md')));
 
   // Second run performs no writes. The missing-strategy-file action persists
   // by design — the condition is still true until someone runs ce-strategy.

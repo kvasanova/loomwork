@@ -96,12 +96,11 @@ export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
     actions.push(hadHooksJson ? 'merged .cursor/hooks.json' : 'wrote .cursor/hooks.json');
   }
 
-  // AGENTS.md first: it is the tool-agnostic memory file, so the block reaches
-  // every agent rather than Claude Code alone. A repo with only CLAUDE.md still
-  // gets it there; a repo with neither gets a new CLAUDE.md.
+  // Existing AGENTS.md wins because it is tool-agnostic; existing CLAUDE.md
+  // remains supported, and a repository with neither creates AGENTS.md.
   const memoryCandidates = ['AGENTS.md', 'CLAUDE.md'].map((f) => path.join(repoRoot, f));
   const memoryFile =
-    memoryCandidates.find((p) => fs.existsSync(p)) ?? path.join(repoRoot, 'CLAUDE.md');
+    memoryCandidates.find((p) => fs.existsSync(p)) ?? path.join(repoRoot, 'AGENTS.md');
   const existing = fs.existsSync(memoryFile) ? fs.readFileSync(memoryFile, 'utf8') : '';
   // Check every candidate, not just the selected one. A repo initialized before
   // AGENTS.md took precedence has the block in CLAUDE.md; appending a second

@@ -42,3 +42,10 @@ test('Codex hooks run both gates before explicit skill prompts', () => {
     assert.equal(hook.additionalContextLimit, 2500);
   }
 });
+
+test('init skill exposes a host-neutral skill-relative entry point', () => {
+  const skill = fs.readFileSync(path.join(ROOT, 'skills/init/SKILL.md'), 'utf8');
+  assert.match(skill, /^---\nname: init\n/m);
+  assert.match(skill, /\.\.\/\.\.\/scripts\/init\.mjs/);
+  assert.doesNotMatch(skill, /PLUGIN_ROOT|CLAUDE_PLUGIN_ROOT/);
+});
