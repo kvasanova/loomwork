@@ -8,10 +8,8 @@
   },
   "repository": "https://github.com/kvasanova/loomwork",
   "extensions": {
-    "com": {
-      "openai": {
-        "hooks": "./hooks/codex-hooks.json"
-      }
+    "com.openai": {
+      "hooks": "./hooks/codex-hooks.json"
     }
   }
 }

@@ -14,7 +14,7 @@ test('portable manifest identifies loomwork and registers Codex hooks', () => {
   const manifest = readJson('plugin.json');
   assert.equal(manifest.$schema, 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json');
   assert.equal(manifest.name, 'loomwork');
-  assert.equal(manifest.extensions.com.openai.hooks, './hooks/codex-hooks.json');
+  assert.equal(manifest.extensions['com.openai'].hooks, './hooks/codex-hooks.json');
 });
 
 test('portable and Claude manifests keep shared identity aligned', () => {
