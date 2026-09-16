@@ -9,15 +9,20 @@ import { spawnSync } from 'node:child_process';
 const HOOKS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../hooks');
 
 function runHook(script, stdinObj, projectDir) {
+  const projectEnv = projectDir ? { CLAUDE_PROJECT_DIR: projectDir } : {};
   return spawnSync('bash', [path.join(HOOKS_DIR, script)], {
     input: JSON.stringify(stdinObj),
     encoding: 'utf8',
-    env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir },
+    env: { ...process.env, ...projectEnv },
   });
 }
 
 function skillEvent(skill) {
   return { hook_event_name: 'PostToolUse', tool_name: 'Skill', tool_input: { skill } };
+}
+
+function codexPromptEvent(prompt, cwd) {
+  return { hook_event_name: 'UserPromptSubmit', prompt, cwd };
 }
 
 test('strategy-gate fires on plugin-qualified brainstorming with default STRATEGY.md', () => {
@@ -91,6 +96,37 @@ test('strategy-gate missing-file nudge honors custom strategyFile', () => {
   assert.doesNotMatch(context, /decoy-should-not-be-injected/);
 });
 
+test('strategy-gate injects strategy for an explicit Codex brainstorming prompt', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'codex-strategy-marker\n');
+  const result = runHook(
+    'strategy-gate.sh',
+    codexPromptEvent('$superpowers:brainstorming design issue 3', root),
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout);
+  assert.equal(out.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  assert.match(out.hookSpecificOutput.additionalContext, /codex-strategy-marker/);
+});
+
+test('strategy-gate nudges for an explicit Codex writing-plans prompt without strategy', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  const result = runHook(
+    'strategy-gate.sh',
+    codexPromptEvent('$superpowers:writing-plans', root),
+  );
+  const out = JSON.parse(result.stdout);
+  assert.equal(out.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  assert.match(out.hookSpecificOutput.additionalContext, /compound-engineering:ce-strategy/);
+});
+
+test('strategy-gate ignores unrelated Codex prompts', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  const result = runHook('strategy-gate.sh', codexPromptEvent('fix the parser', root));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
 test('strategy-gate stays silent when CLAUDE_PROJECT_DIR is unset', () => {
   const result = runHook('strategy-gate.sh', skillEvent('superpowers:brainstorming'));
   assert.equal(result.status, 0, result.stderr);
@@ -114,5 +150,26 @@ test('close-out-gate stays silent on non-matching skill', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
   const result = runHook('close-out-gate.sh', skillEvent('superpowers:brainstorming'), root);
   assert.equal(result.status, 0);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('close-out-gate reminds on an explicit Codex finishing prompt', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ plansDir: 'docs/plans' }));
+  const result = runHook(
+    'close-out-gate.sh',
+    codexPromptEvent('$superpowers:finishing-a-development-branch', root),
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout);
+  assert.equal(out.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+  assert.match(out.hookSpecificOutput.additionalContext, /docs\/plans/);
+  assert.match(out.hookSpecificOutput.additionalContext, /loomwork:close-out/);
+});
+
+test('close-out-gate ignores unrelated Codex prompts', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  const result = runHook('close-out-gate.sh', codexPromptEvent('$superpowers:brainstorming', root));
+  assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), '');
 });
