@@ -50,6 +50,14 @@ test('init skill exposes a host-neutral skill-relative entry point', () => {
   assert.doesNotMatch(skill, /PLUGIN_ROOT|CLAUDE_PLUGIN_ROOT/);
 });
 
+test('split-agents-md skill stays manual and host-neutral', () => {
+  const skill = fs.readFileSync(path.join(ROOT, 'skills/split-agents-md/SKILL.md'), 'utf8');
+  assert.match(skill, /^---\nname: split-agents-md\n/m);
+  assert.match(skill, /Invoke this skill only when the user asks for it/);
+  assert.match(skill, /<!-- loomwork:begin -->/);
+  assert.match(skill, /@AGENTS\.md/);
+});
+
 test('audit skill resolves its CLI relative to the installed skill', () => {
   const skill = fs.readFileSync(path.join(ROOT, 'skills/audit/SKILL.md'), 'utf8');
   assert.match(skill, /\.\.\/\.\.\/scripts\/sdd-audit\.mjs/);
