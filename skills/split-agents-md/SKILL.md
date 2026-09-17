@@ -1,5 +1,6 @@
 ---
 name: split-agents-md
+disable-model-invocation: true
 description: Manual-only; use only when explicitly requested. Split a single-file agent guidance document into a tool-agnostic AGENTS.md plus thin host-specific files (CLAUDE.md, .github/copilot-instructions.md, and similar) that import it. Invoke explicitly when a repository has one oversized CLAUDE.md or AGENTS.md that mixes shared contributor knowledge with host-specific mechanics.
 ---
 
