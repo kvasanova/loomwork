@@ -5,6 +5,26 @@ All notable changes to loomwork are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-09-17
+
+### Added
+
+- **`skills/split-agents-md/SKILL.md`** splits one oversized agent guidance
+  file into a tool-agnostic `AGENTS.md` plus thin host files that import or
+  reference it. The skill is manual-only — its frontmatter description says so
+  at the trigger surface, so it never fires on its own. It carries the
+  classification procedure that decides what is shared knowledge and what is
+  host mechanics, and it moves any marker-guarded block into `AGENTS.md` so
+  `scripts/init.mjs` keeps finding exactly one block to update.
+
+  A host file holding nothing but the import is still written when the host
+  cannot read `AGENTS.md` natively. Claude Code is such a host: dropping its
+  `CLAUDE.md` as "import-only" would leave it with no shared guidance at all.
+  Only a host that reads `AGENTS.md` on its own — Codex — gets no file.
+
+  The skill commits only when the user asks. The classification calls are the
+  kind a human wants to review before they land in history.
+
 ## [0.4.0] - 2026-09-16
 
 loomwork becomes a portable Agent Plugins package. Codex can install and run it
