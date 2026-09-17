@@ -1,6 +1,6 @@
 ---
 name: split-agents-md
-description: Split a single-file agent guidance document into a tool-agnostic AGENTS.md plus thin host-specific files (CLAUDE.md, .github/copilot-instructions.md, and similar) that import it. Invoke explicitly when a repository has one oversized CLAUDE.md or AGENTS.md that mixes shared contributor knowledge with host-specific mechanics.
+description: Manual-only; use only when explicitly requested. Split a single-file agent guidance document into a tool-agnostic AGENTS.md plus thin host-specific files (CLAUDE.md, .github/copilot-instructions.md, and similar) that import it. Invoke explicitly when a repository has one oversized CLAUDE.md or AGENTS.md that mixes shared contributor knowledge with host-specific mechanics.
 ---
 
 # Split agent guidance into AGENTS.md + host files
@@ -111,7 +111,12 @@ Codex reads `AGENTS.md` natively and needs no host file at all. Do not create
 one unless the repository has genuinely Codex-only mechanics to record, and
 then name it for the host rather than reusing `AGENTS.md`.
 
-If a host file would contain nothing but the import, do not create it.
+A host file that carries only the import is still worth writing when the host
+cannot read `AGENTS.md` on its own — the import is the bridge, and without it
+that host sees none of the shared guidance. Claude Code is such a host: write
+`CLAUDE.md` even when the repository has no Claude-specific mechanics. Skip
+the file only for a host that reads `AGENTS.md` natively, where an import-only
+file would add nothing.
 
 ## 5. Verify
 
@@ -124,9 +129,13 @@ If a host file would contain nothing but the import, do not create it.
 
 ## 6. Commit and report
 
-Use a `docs:` commit. Write a body that says what moved into `AGENTS.md`, what
-each host file kept, and why — the body is the record of the classification
-decision, so it goes to other humans in normal prose.
+Commit only when the user asked for a commit. Otherwise leave the split in the
+working tree and let them review it first — the classification calls are the
+kind a human wants to see before they are recorded in history.
+
+When committing, use a `docs:` commit. Write a body that says what moved into
+`AGENTS.md`, what each host file kept, and why — the body is the record of the
+classification decision, so it goes to other humans in normal prose.
 
 Report to the user: the files written, anything dropped as stale, and any
 classification call that could reasonably have gone the other way.
