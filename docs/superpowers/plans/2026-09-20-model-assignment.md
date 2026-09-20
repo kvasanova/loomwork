@@ -1,5 +1,7 @@
 # Model Assignment Skill Implementation Plan
 
+> **Status: DONE — shipped in PR #13 (2026-09-20).** Historical record; not maintained.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add `loomwork:model-assignment`, a manual-only skill that appends a
@@ -75,7 +77,7 @@ side, and this feature is entirely the latter.
   doctrine line only needs the skill to exist and be named
   `loomwork:model-assignment`, which this task guarantees.
 
-- [ ] **Step 1: Write the skill file**
+- [x] **Step 1: Write the skill file**
 
 Create `skills/model-assignment/SKILL.md` with this exact content:
 
@@ -228,7 +230,7 @@ Then state to the user:
 > that skill dispatches no subagents.
 ```
 
-- [ ] **Step 2: Verify the file was created and is valid frontmatter**
+- [x] **Step 2: Verify the file was created and is valid frontmatter**
 
 Run:
 
@@ -239,7 +241,7 @@ head -5 skills/model-assignment/SKILL.md
 Expected: the `---` frontmatter block with `name: model-assignment` and
 `disable-model-invocation: true` visible.
 
-- [ ] **Step 3: Confirm no other skill file was touched**
+- [x] **Step 3: Confirm no other skill file was touched**
 
 Run:
 
@@ -250,7 +252,7 @@ git status --short skills/
 Expected: only `skills/model-assignment/SKILL.md` shown as new (`??` or
 `A`), nothing else under `skills/` modified.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add skills/model-assignment/SKILL.md
@@ -273,7 +275,7 @@ git commit -m "feat(skills): add loomwork:model-assignment"
   `scripts/init.mjs:113`) copies into every consumer repo's
   `<!-- loomwork:begin -->` marker block.
 
-- [ ] **Step 1: Read the current file**
+- [x] **Step 1: Read the current file**
 
 ```bash
 cat templates/claude-md-block.md
@@ -305,7 +307,7 @@ If it does not match (someone else edited it since this plan was written),
 stop and re-derive the insertion point from the live file instead of
 overwriting unrelated changes.
 
-- [ ] **Step 2: Insert the doctrine line**
+- [x] **Step 2: Insert the doctrine line**
 
 Insert as a new bullet after the "Plans freeze after merge" bullet and
 before the "Drift check" bullet:
@@ -334,7 +336,7 @@ Resulting bullet list (full, for verification):
   `finishing-a-development-branch`.
 ```
 
-- [ ] **Step 3: Run the existing test suite to confirm nothing broke**
+- [x] **Step 3: Run the existing test suite to confirm nothing broke**
 
 ```bash
 node --test scripts/lib/__tests__/*.test.mjs
@@ -345,7 +347,7 @@ copied verbatim by `initRepo`; `init.test.mjs` only asserts the
 `<!-- loomwork:begin -->`/`<!-- loomwork:end -->` markers are present, not
 the block's line count — see `scripts/lib/__tests__/init.test.mjs:30`).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add templates/claude-md-block.md
@@ -365,7 +367,7 @@ git commit -m "docs(templates): bind Model Assignment table as SDD doctrine"
   reference only, no code coupling).
 - Produces: nothing consumed by other tasks — this is the last task.
 
-- [ ] **Step 1: Update the Large capability flow in `references/PLAYBOOK.md`**
+- [x] **Step 1: Update the Large capability flow in `references/PLAYBOOK.md`**
 
 Find this line (currently the "Large capability" bullet under
 `## Flow by feature size`):
@@ -390,7 +392,7 @@ under `executing-plans`) → `subagent-driven-development` for parallel
 independent tasks, else `executing-plans`.
 ```
 
-- [ ] **Step 2: Add the skill row to `README.md`**
+- [x] **Step 2: Add the skill row to `README.md`**
 
 Find the existing skill table rows (they currently read, among others):
 
@@ -406,7 +408,7 @@ Add a new row immediately after the `loomwork:split-agents-md` row:
 | `loomwork:model-assignment` skill | Manual-only: appends a `## Model Assignment` table to a plan, pinning a model alias per `subagent-driven-development` role. Run in the executing session so approved aliases are ones actually available. No effect under `executing-plans`, which dispatches no subagents. |
 ```
 
-- [ ] **Step 3: Verify both edits landed correctly**
+- [x] **Step 3: Verify both edits landed correctly**
 
 ```bash
 grep -n "loomwork:model-assignment" references/PLAYBOOK.md README.md
@@ -414,7 +416,7 @@ grep -n "loomwork:model-assignment" references/PLAYBOOK.md README.md
 
 Expected: one match in each file.
 
-- [ ] **Step 4: Run the full test suite one final time**
+- [x] **Step 4: Run the full test suite one final time**
 
 ```bash
 node --test scripts/lib/__tests__/*.test.mjs
@@ -423,7 +425,7 @@ node --test scripts/lib/__tests__/*.test.mjs
 Expected: all tests pass (these are doc-only edits; no test references
 `PLAYBOOK.md` or `README.md` content).
 
-- [ ] **Step 5: File the effort-research follow-up issue**
+- [x] **Step 5: File the effort-research follow-up issue**
 
 Per spec Non-goals: this plan deliberately omits an effort column because
 no mechanism exists today for a per-task dispatch to set reasoning effort
@@ -436,7 +438,7 @@ settable only via agent-definition frontmatter; research what mechanism (if
 any) could let a per-task dispatch carry an effort level, and whether that
 belongs in this skill's table as a follow-up column once it exists.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add references/PLAYBOOK.md README.md
@@ -464,3 +466,17 @@ will honor the table's rows." Before closing out this plan:
 3. Start (or note the setup step of) a `subagent-driven-development` session
    against that plan and confirm it reads the plan's Global Constraints and
    states it will consult the Model Assignment table for dispatch aliases.
+
+## Model Assignment
+
+| Task | Role | Model | Why |
+|------|------|-------|-----|
+| 1 | implementer | haiku | complete skill content transcribed verbatim |
+| 1 | reviewer | sonnet | small mechanical diff |
+| 2 | implementer | haiku | exact bullet insertion given |
+| 2 | reviewer | sonnet | small mechanical diff |
+| 3 | implementer | sonnet | prose task, 2 files + issue filing |
+| 3 | reviewer | sonnet | small mechanical diff |
+| final review | reviewer | opus | whole-branch, always most capable |
+
+Rows absent here fall back to the SDD Model Selection rubric.

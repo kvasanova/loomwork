@@ -1,6 +1,8 @@
 ---
 issue: 11
-status: draft
+status: implemented
+implemented_in: "PR #13"
+verified: 2026-09-20
 ---
 
 # loomwork:model-assignment — pin SDD subagent models in the plan
@@ -305,38 +307,38 @@ existing suite must still pass unmodified.
 
 ## Acceptance
 
-- [ ] `skills/model-assignment/SKILL.md` exists with
+- [x] `skills/model-assignment/SKILL.md` exists with
       `disable-model-invocation: true` and a description naming manual-only
       invocation with a plan-path argument.
-- [ ] The skill resolves an explicit plan-path argument, and falls back to
+- [x] The skill resolves an explicit plan-path argument, and falls back to
       the most recently modified plan in the configured `plansDir` when no
       argument is given.
-- [ ] The skill refuses a plan whose banner matches `^> \*\*Status: DONE`.
-- [ ] The skill detects an existing `## Model Assignment` section and offers
+- [x] The skill refuses a plan whose banner matches `^> \*\*Status: DONE`.
+- [x] The skill detects an existing `## Model Assignment` section and offers
       replace-or-stop rather than appending a second section.
-- [ ] The skill reads a paired spec (filename-slug match) when one exists,
+- [x] The skill reads a paired spec (filename-slug match) when one exists,
       for architectural-risk context.
-- [ ] The skill confirms which model aliases are actually available in the
+- [x] The skill confirms which model aliases are actually available in the
       executing session before proposing any row, and every proposed alias
       comes from that confirmed list.
-- [ ] The proposed table's `Model` column holds only bare aliases (e.g.
+- [x] The proposed table's `Model` column holds only bare aliases (e.g.
       `haiku`, `sonnet`, `opus`) — no tier word, no full model ID, no effort
       value anywhere in the skill's output.
-- [ ] The table is presented for approval, with edits accepted, before any
+- [x] The table is presented for approval, with edits accepted, before any
       write to the plan file.
-- [ ] The appended table matches the shape in Design §1 Step 10, including
+- [x] The appended table matches the shape in Design §1 Step 10, including
       the fixed trailer line verbatim.
-- [ ] The skill states the `executing-plans` no-op caveat after writing.
-- [ ] `templates/claude-md-block.md` contains the doctrine line from
+- [x] The skill states the `executing-plans` no-op caveat after writing.
+- [x] `templates/claude-md-block.md` contains the doctrine line from
       Design §2, verbatim.
-- [ ] `references/PLAYBOOK.md`'s Large capability flow names
+- [x] `references/PLAYBOOK.md`'s Large capability flow names
       `loomwork:model-assignment` at the stated slot.
-- [ ] `README.md`'s skill table includes the new row.
-- [ ] The full existing test suite (`node --test scripts/lib/__tests__/*.test.mjs`)
+- [x] `README.md`'s skill table includes the new row.
+- [x] The full existing test suite (`node --test scripts/lib/__tests__/*.test.mjs`)
       passes unmodified.
-- [ ] Verified against a real multi-task plan: the table lands well-formed,
+- [x] Verified against a real multi-task plan: the table lands well-formed,
       and a fresh `subagent-driven-development` session at setup reads and
       states it will honor the table's rows.
-- [ ] A follow-up GitHub issue exists tracking research into incorporating
+- [x] A follow-up GitHub issue exists tracking research into incorporating
       reasoning effort (`low|medium|high|xhigh|max`) into a per-task
       dispatch, since no such mechanism exists today.
