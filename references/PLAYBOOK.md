@@ -76,8 +76,10 @@ something non-obvious, follow [Where learnings go](#where-learnings-go) (one-lin
 **Large capability** — `brainstorming` → design doc in
 `docs/superpowers/specs/YYYY-MM-DD-feature-design.md` with status frontmatter
 (below) → optional `ce-doc-review` for an adversarial multi-persona pass →
-`writing-plans` → `subagent-driven-development` for parallel independent tasks,
-else `executing-plans`.
+`writing-plans` → optional `loomwork:model-assignment`, run in the executing
+session, to pin subagent model aliases on the plan (SDD only; no effect
+under `executing-plans`) → `subagent-driven-development` for parallel
+independent tasks, else `executing-plans`.
 
 > `subagent-driven-development` reuses `.superpowers/sdd/` scratch files by
 > filename across plans. `rm -rf .superpowers/sdd/*` before dispatching Task 1
