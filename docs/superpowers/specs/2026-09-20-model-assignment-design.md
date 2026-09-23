@@ -1,6 +1,6 @@
 ---
 issue: 11
-status: implemented
+status: in-progress
 implemented_in: "PR #13"
 verified: 2026-09-20
 ---
@@ -111,6 +111,23 @@ The skill must say this out loud: a user who runs
 `/loomwork:model-assignment` and then executes through `executing-plans`
 otherwise gets a table that silently does nothing.
 
+## Dispatch discipline
+
+SDD escalates on its own: a BLOCKED implementer "requires more reasoning" is
+re-dispatched on a more capable model, and fix-loop rounds 4-5 dispatch "a
+model at least one tier above the implementer that got stuck". Either path
+silently overrides the alias the user approved, which is the choice the
+table exists to pin.
+
+So the table carries its own dispatch rules, after the fallback line:
+
+- **Same alias on every re-dispatch.** Fix rounds, NEEDS_CONTEXT, BLOCKED,
+  and fix-loop rounds 4-5 all use the row's alias. A controller never
+  re-dispatches on a more capable alias than the row selects.
+- **Ask after 3 failures.** After 3 failed attempts on the same task, the
+  controller stops and asks the user. Only the user may approve a different
+  alias, and the approval is ledgered.
+
 ## Design
 
 ### 1. `skills/model-assignment/SKILL.md`
@@ -209,6 +226,10 @@ no placeholders to fill in):
     | final review | reviewer | opus | whole-branch, always most capable |
 
     Rows absent here fall back to the SDD Model Selection rubric.
+
+    Dispatch discipline:
+    <fixed block per "Dispatch discipline" above; the skill holds the
+    verbatim text>
     ```
 
     The example row values above are illustrative; the actual table holds
@@ -233,7 +254,8 @@ consumer repo's marker block verbatim:
 ```markdown
 - When a plan carries a `## Model Assignment` table, `subagent-driven-development`
   dispatches use it; a task or role missing from the table falls back to the
-  skill's own Model Selection rubric.
+  skill's own Model Selection rubric. Re-dispatches keep the row's alias,
+  never a more capable one; after 3 failed attempts on a task, ask the user.
 ```
 
 No other line in the template changes. `init.mjs` itself needs no code
@@ -342,3 +364,8 @@ existing suite must still pass unmodified.
 - [x] A follow-up GitHub issue exists tracking research into incorporating
       reasoning effort (`low|medium|high|xhigh|max`) into a per-task
       dispatch, since no such mechanism exists today.
+- [ ] The appended table carries the fixed dispatch-discipline block
+      verbatim: every re-dispatch uses the row's alias, never a more capable
+      one, and 3 failed attempts on a task stop the run to ask the user.
+- [ ] Verified against a real SDD run: a failing task is re-dispatched on
+      its row's alias, and the controller asks the user after 3 failures.
