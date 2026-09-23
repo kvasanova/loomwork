@@ -51,5 +51,8 @@ test('resolveRepoRoot accepts .loomwork.json as a root marker', () => {
 
 test('resolveRepoRoot throws actionably when no marker found', () => {
   const bare = tmpDir();
-  assert.throws(() => resolveRepoRoot({}, bare), /CLAUDE_PROJECT_DIR|git repo|\.loomwork\.json/);
+  assert.throws(
+    () => resolveRepoRoot({}, bare, bare),
+    /CLAUDE_PROJECT_DIR|git repo|\.loomwork\.json/,
+  );
 });

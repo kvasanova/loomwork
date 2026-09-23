@@ -20,7 +20,7 @@ export function loadConfig(repoRoot) {
   return { ...DEFAULT_CONFIG, ...parsed };
 }
 
-export function resolveRepoRoot(env = process.env, cwd = process.cwd()) {
+export function resolveRepoRoot(env = process.env, cwd = process.cwd(), stopAt = null) {
   if (env.CLAUDE_PROJECT_DIR) return env.CLAUDE_PROJECT_DIR;
   let dir = cwd;
   for (;;) {
@@ -30,6 +30,7 @@ export function resolveRepoRoot(env = process.env, cwd = process.cwd()) {
     ) {
       return dir;
     }
+    if (dir === stopAt) break;
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
