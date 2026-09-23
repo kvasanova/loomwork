@@ -117,6 +117,7 @@ test('strategy-gate missing-file nudge honors custom strategyFile', () => {
 
 test('strategy-gate injects strategy for an explicit Codex brainstorming prompt', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  fs.mkdirSync(path.join(root, '.git'));
   fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'codex-strategy-marker\n');
   const result = runHook(
     'strategy-gate.sh',
@@ -214,6 +215,7 @@ const LONG_TAIL = `\n${'padding-text-to-force-a-large-pipe-buffer '.repeat(
 
 test('strategy-gate survives a multi-kilobyte Codex prompt', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
+  fs.mkdirSync(path.join(root, '.git'));
   fs.writeFileSync(path.join(root, 'STRATEGY.md'), 'long-prompt-marker\n');
   const prompt = `$superpowers:brainstorming${LONG_TAIL}`;
   assert.ok(prompt.includes('\n'), 'the trigger must be followed by a newline');
