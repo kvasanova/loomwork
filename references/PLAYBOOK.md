@@ -77,7 +77,8 @@ something non-obvious, follow [Where learnings go](#where-learnings-go) (one-lin
 `docs/superpowers/specs/YYYY-MM-DD-feature-design.md` with status frontmatter
 (below) → optional `ce-doc-review` for an adversarial multi-persona pass →
 `writing-plans` → optional `loomwork:model-assignment`, run in the executing
-session, to pin subagent model aliases on the plan (SDD only; no effect
+session right before execution, to pick subagent model aliases per task
+(held in the session; written to the plan only if asked; SDD only, no effect
 under `executing-plans`) → `subagent-driven-development` for parallel
 independent tasks, else `executing-plans`.
 
