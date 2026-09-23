@@ -1,35 +1,35 @@
 ---
 name: model-assignment
 disable-model-invocation: true
-description: Manual-only; use only when explicitly requested. Append a Model Assignment table to a plan in docs/superpowers/plans/, pinning the model alias per subagent-driven-development role so execution doesn't inherit the session default. Run this in the session that will execute the plan, so the aliases you approve are the ones actually available to you. Invoke explicitly with a plan path, e.g. /loomwork:model-assignment docs/superpowers/plans/2026-09-20-feature.md.
+description: Manual-only; use only when explicitly requested. Right before executing a plan in docs/superpowers/plans/, pick the model alias per task for subagent-driven-development's implementer and reviewer dispatches, so execution doesn't inherit the session default. The approved assignment lives in the session; writing it into the plan is optional and asked at the end. Invoke explicitly with a plan path, e.g. /loomwork:model-assignment docs/superpowers/plans/2026-09-20-feature.md.
 ---
 
-# Pin subagent model aliases on a plan
+# Pick subagent model aliases for a plan
 
-Announce: "Using loomwork:model-assignment to pin subagent model aliases on the plan."
+Announce: "Using loomwork:model-assignment to pick subagent model aliases for the plan."
 
 Invoke this skill only when the user asks for it. It is not automatic and no
-hook fires it. Run it in the session that will execute the plan — the
-aliases you confirm as available in Step 6 are only true for the session
-running the skill, and this is also the session whose judgment approves the
-table in Step 7.
+hook fires it. Run it in the session that will execute the plan, right
+before `superpowers:subagent-driven-development` (SDD) starts — the aliases
+you confirm as available in Step 6 are only true for this session, and this
+session is the one that dispatches with them.
 
-**Goal:** append a `## Model Assignment` table to an existing plan in
-`docs/superpowers/plans/`, so `superpowers:subagent-driven-development` (SDD)
-reads model choices out of the plan instead of inheriting the session
-default per dispatch.
+**Goal:** settle, per task, which model alias SDD passes to the `Agent`
+tool's `model` parameter for the implementer and the reviewer, so dispatches
+stop inheriting the session default. By default the approved assignment
+lives only in this session's context. Writing it into the plan is optional
+(Step 9).
 
-**Scope: SDD only.** The table is read by `subagent-driven-development` and
-nothing else. `superpowers:executing-plans` dispatches no subagents — that
-session executes every task in its own context, so there is no `Agent` call
-and no `model` parameter for a table to control. A table on a plan destined
-for `executing-plans` is inert: harmless, but it buys nothing. State this to
-the user after writing the table (Step 8).
+**Scope: SDD only.** The assignment is read by `subagent-driven-development`
+and nothing else. `superpowers:executing-plans` dispatches no subagents —
+that session executes every task in its own context, so there is no `Agent`
+call and no `model` parameter for an assignment to control. State this to the
+user at the end (Step 10).
 
-**No effort column.** The `Agent` dispatch tool takes `model` as a bare
+**No effort setting.** The `Agent` dispatch tool takes `model` as a bare
 alias and exposes no per-call effort or thinking parameter — an exact model
 ID or a reasoning-effort level is only settable in agent-definition
-frontmatter, which a per-task dispatch does not override. This skill records
+frontmatter, which a per-task dispatch does not override. This skill assigns
 only what a dispatch can actually honor: the alias.
 
 ## Step 1: Resolve the plan path
@@ -55,11 +55,13 @@ stop:
 > freeze after merge and never change again. Model assignment only runs
 > pre-merge, on a live plan.
 
-## Step 3: Refuse or replace an existing table
+## Step 3: Note an existing assignment
 
-If the plan already contains a `## Model Assignment` heading, ask the user:
-replace the existing table, or stop. Never append a second `## Model
-Assignment` section to the same file.
+If the plan already carries `**Model:**` lines under its task headings, or a
+`**Models:**` line in its header, treat those aliases as the starting point
+for Step 7's proposal and tell the user they are there. If Step 9 writes to
+the plan, it replaces those lines in place — never add a second `**Model:**`
+line to a task or a second `**Models:**` line to the header.
 
 ## Step 4: Read the paired spec, if any
 
@@ -90,65 +92,76 @@ Do not assume a fixed alias set. State the aliases this session's own
 live for their subscription right now — a subscription may exclude one.
 This confirmed list is the only vocabulary Step 7's proposal may draw from.
 
-## Step 7: Propose one row per task per role
+## Step 7: Propose an implementer and a reviewer alias per task
 
 Pick from the confirmed alias list only — never a tier word
 (cheap/standard/most-capable), never an alias not confirmed available in
 Step 6:
 
-- **implementer row:** the cheapest available alias when the task touches
-  1-2 files and the plan text already contains the complete code to write
+- **implementer:** the cheapest available alias when the task touches 1-2
+  files and the plan text already contains the complete code to write
   (transcription plus testing); a mid-tier alias as the floor for tasks
   described in prose or touching multiple files with integration concerns;
   the most capable available alias only when the task requires
   architectural or broad-codebase judgment.
-- **reviewer row:** mid-tier as the floor; the most capable available alias
-  only for a genuinely large or risky diff. A small mechanical diff never
-  needs more than mid-tier.
-- **final review row:** the most capable available alias — non-negotiable,
-  per SDD's own text ("dispatch it on the most capable available model, not
-  the session default").
+- **reviewer:** mid-tier as the floor; the most capable available alias only
+  for a genuinely large or risky diff. A small mechanical diff never needs
+  more than mid-tier.
 
-Present the full proposed table for approval before writing anything to the
-plan file. The user reviews and may edit every row — this is not a
-formality; the proposal is a starting point and the user's judgment on
-which alias fits which task is final.
+The final whole-branch review is not part of the proposal: SDD already
+dispatches it on the most capable available model. Name that alias in the
+proposal so the user sees it, but do not assign or record it.
 
-## Step 8: Write the approved table
+Present the proposal in chat as one line per task — task number, name,
+implementer alias, reviewer alias, and a few words of reasoning. The
+reasoning is for the user's review only; it is never written to the plan.
+The user may edit any task's aliases — the proposal is a starting point and
+the user's judgment on which alias fits which task is final.
 
-Only after approval, append this exact shape as a new `##` section at the
-end of the plan file (after its last existing section):
+## Step 8: Hold the approved assignment in the session
 
-```markdown
-## Model Assignment
+Once the user approves, restate the final assignment as a compact list and
+state that it governs every SDD dispatch in this session:
 
-| Task | Role | Model | Why |
-|------|------|-------|-----|
-| 1 | implementer | haiku | complete code in plan text, transcription |
-| 1 | reviewer | sonnet | small mechanical diff |
-| 2 | implementer | sonnet | 3 files, integration concerns |
-| 2 | reviewer | sonnet | |
-| final review | reviewer | opus | whole-branch, always most capable |
-
-Rows absent here fall back to the SDD Model Selection rubric.
-
-Dispatch discipline:
-
-- Every dispatch for a task and role uses that row's alias, including every
-  re-dispatch: fix rounds, NEEDS_CONTEXT, BLOCKED, and SDD's fix-loop rounds
-  4-5. Never re-dispatch on a more capable alias than the row selects.
+- Each task's implementer and reviewer dispatches pass that task's approved
+  alias as the `Agent` tool's `model`.
+- Every re-dispatch for a task and role — fix rounds, NEEDS_CONTEXT,
+  BLOCKED, and SDD's fix-loop rounds 4-5 — keeps that alias. Never
+  re-dispatch on a more capable alias than the one approved.
 - After 3 failed attempts on the same task, stop and ask the user how to
   proceed. Only the user may approve a different alias; ledger the approval.
-```
+- A task with no approved alias falls back to SDD's Model Selection rubric.
 
-Replace the example rows with the table proposed and approved in Step 7.
-Everything after the table — the fallback line and the dispatch-discipline block — is
-fixed text: copy it verbatim, do not paraphrase or omit it. The column header
-is `Model`, and its value is the literal alias to pass to the `Agent` tool's
-`model` parameter at dispatch time — not a tier word or a description.
+## Step 9: Offer to write it into the plan
 
-Then state to the user:
+Ask the user whether to also write the assignment into the plan file. The
+default is no. Tell them the trade-off in one sentence: without it, the
+assignment exists only in this session's context, so it is lost if the
+session compacts or execution resumes in a new session.
 
-> This table is read by `subagent-driven-development` only. If this plan is
-> executed through `executing-plans` instead, the table has no effect —
+Only if the user says yes:
+
+1. Under each `### Task N: <name>` heading, insert one line after a blank
+   line, before the task's existing content:
+
+   ```markdown
+   **Model:** implementer <alias> · reviewer <alias>
+   ```
+
+2. In the plan header — after its last `**Label:**` line (`**Goal:**`,
+   `**Spec:**`, `**Tech Stack:**`, …), before the first `---` or `## `
+   heading — insert this line verbatim, once:
+
+   ```markdown
+   **Models:** re-dispatches keep the task's model, never a more capable one; after 3 failed attempts on a task, ask the user.
+   ```
+
+Write nothing else: no table, no reasoning, no final-review line. Each
+`<alias>` is the literal value for the `Agent` tool's `model` parameter —
+not a tier word or a description.
+
+## Step 10: State the executing-plans caveat
+
+> This assignment is read by `subagent-driven-development` only. If this
+> plan is executed through `executing-plans` instead, it has no effect —
 > that skill dispatches no subagents.
