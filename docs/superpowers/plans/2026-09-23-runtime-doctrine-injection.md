@@ -1,5 +1,7 @@
 # Runtime Doctrine Injection Implementation Plan
 
+> **Status: DONE — shipped in commit 4ce86f1 (2026-09-23).** Historical record; not maintained.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stop copying the loomwork doctrine block into consumer repos; inject it live from the installed plugin at Claude Code `SessionStart`, and remove Cursor-specific support entirely.
@@ -64,12 +66,12 @@
 
 This is a refactor with no behavior change — the existing `hooks.test.mjs` suite for `strategy-gate.sh` and `close-out-gate.sh` is the regression test. No new test content in this task beyond confirming the existing suite still passes.
 
-- [ ] **Step 1: Run the existing hook test suite to record the current passing baseline**
+- [x] **Step 1: Run the existing hook test suite to record the current passing baseline**
 
 Run: `node --test scripts/lib/__tests__/hooks.test.mjs`
 Expected: PASS (all existing tests green) — this is the baseline the refactor must not break.
 
-- [ ] **Step 2: Create `hooks/lib/resolve-repo-root.sh` with the extracted function**
+- [x] **Step 2: Create `hooks/lib/resolve-repo-root.sh` with the extracted function**
 
 ```bash
 #!/usr/bin/env bash
@@ -91,7 +93,7 @@ resolve_repo_root() {
 }
 ```
 
-- [ ] **Step 3: Replace the inline definition in `hooks/strategy-gate.sh`**
+- [x] **Step 3: Replace the inline definition in `hooks/strategy-gate.sh`**
 
 Find this block in `hooks/strategy-gate.sh`:
 
@@ -119,16 +121,16 @@ Replace it with:
 source "$(dirname "$0")/lib/resolve-repo-root.sh"
 ```
 
-- [ ] **Step 4: Replace the inline definition in `hooks/close-out-gate.sh`**
+- [x] **Step 4: Replace the inline definition in `hooks/close-out-gate.sh`**
 
 Same replacement as Step 3, applied to `hooks/close-out-gate.sh`'s identical block.
 
-- [ ] **Step 5: Run the existing hook test suite again to confirm no regression**
+- [x] **Step 5: Run the existing hook test suite again to confirm no regression**
 
 Run: `node --test scripts/lib/__tests__/hooks.test.mjs`
 Expected: PASS — identical results to Step 1's baseline. If any test that spawns `strategy-gate.sh` or `close-out-gate.sh` fails, the `source` path is wrong (both scripts live directly in `hooks/`, so `$(dirname "$0")` is `.../hooks` and `lib/resolve-repo-root.sh` resolves correctly relative to it).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add hooks/lib/resolve-repo-root.sh hooks/strategy-gate.sh hooks/close-out-gate.sh
@@ -148,7 +150,7 @@ git commit -m "refactor(hooks): extract shared resolve_repo_root into hooks/lib"
 - Consumes: `hooks/lib/resolve-repo-root.sh`'s `resolve_repo_root()` (Task 1).
 - Produces: `hooks/doctrine-gate.sh`, invoked with a JSON payload on stdin containing `.cwd` (and other `SessionStart` fields Claude provides but this script ignores). Emits `{ "hookSpecificOutput": { "hookEventName": "SessionStart", "additionalContext": "<doctrine text>" } }` on stdout when the resolved repo is opted in; emits nothing and exits 0 otherwise. Later tasks do not depend on this script's internals beyond this contract.
 
-- [ ] **Step 1: Write the failing tests in `scripts/lib/__tests__/hooks.test.mjs`**
+- [x] **Step 1: Write the failing tests in `scripts/lib/__tests__/hooks.test.mjs`**
 
 Add near the top of the file, after the existing `codexPromptEvent` helper:
 
@@ -220,12 +222,12 @@ test('doctrine-gate ignores non-SessionStart events', () => {
 });
 ```
 
-- [ ] **Step 2: Run the new tests to verify they fail**
+- [x] **Step 2: Run the new tests to verify they fail**
 
 Run: `node --test scripts/lib/__tests__/hooks.test.mjs`
 Expected: FAIL — `hooks/doctrine-gate.sh` does not exist yet, so `spawnSync` returns a non-zero status or the JSON parse throws.
 
-- [ ] **Step 3: Write `hooks/doctrine-gate.sh`**
+- [x] **Step 3: Write `hooks/doctrine-gate.sh`**
 
 ```bash
 #!/usr/bin/env bash
@@ -277,12 +279,12 @@ Make it executable:
 chmod +x hooks/doctrine-gate.sh
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node --test scripts/lib/__tests__/hooks.test.mjs`
 Expected: PASS — all doctrine-gate tests green, plus the Task 1 baseline still green.
 
-- [ ] **Step 5: Register the hook in `hooks/hooks.json`**
+- [x] **Step 5: Register the hook in `hooks/hooks.json`**
 
 Read the current file first — its content is:
 
@@ -328,12 +330,12 @@ Replace its full contents with:
 }
 ```
 
-- [ ] **Step 6: Run the full test suite to confirm nothing else broke**
+- [x] **Step 6: Run the full test suite to confirm nothing else broke**
 
 Run: `node --test scripts/lib/__tests__/*.test.mjs`
 Expected: PASS. (`plugin.test.mjs` is untouched by this task and should still be green; it gets updated in Task 5.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add hooks/doctrine-gate.sh hooks/hooks.json scripts/lib/__tests__/hooks.test.mjs
@@ -352,7 +354,7 @@ git commit -m "feat(hooks): add SessionStart doctrine-gate for runtime doctrine 
 - Consumes: nothing new — same `initRepo(repoRoot, pluginRoot)` signature.
 - Produces: `initRepo` no longer appends `templates/claude-md-block.md` into `AGENTS.md`/`CLAUDE.md`. Instead, for each of `AGENTS.md` and `CLAUDE.md` that exists and contains a `<!-- loomwork:begin -->...<!-- loomwork:end -->` span (in the exact format the old writer produced: preceded by a blank line, followed by a trailing newline), removes that span and pushes `removed legacy loomwork block from <basename>` onto the returned actions array. No action pushed when no legacy block is found in that file. This task does not yet touch the Cursor logic (Task 4) — do them independently so each has its own test-passing checkpoint, per Task Right-Sizing.
 
-- [ ] **Step 1: Write the failing tests in `scripts/lib/__tests__/init.test.mjs`**
+- [x] **Step 1: Write the failing tests in `scripts/lib/__tests__/init.test.mjs`**
 
 Add these test cases after the existing `'initRepo appends to CLAUDE.md when it is the only memory file'` test, replacing nothing yet:
 
@@ -458,12 +460,12 @@ Also delete the three whole tests that only exercise Cursor behavior, since Task
 
 Finally, replace the four tests that assert the doctrine block gets appended (`'initRepo appends to AGENTS.md when CLAUDE.md is absent and AGENTS.md exists'`, `'initRepo prefers AGENTS.md over CLAUDE.md when both exist'`, `'initRepo leaves an existing block in CLAUDE.md alone instead of copying it to AGENTS.md'`, `'initRepo appends to CLAUDE.md when it is the only memory file'`) — these test AGENTS.md-vs-CLAUDE.md file preference logic that no longer exists once nothing gets appended. Delete all four; the preference logic they tested is removed in this task's implementation step (init no longer picks a memory file at all).
 
-- [ ] **Step 2: Run the tests to verify the new ones fail**
+- [x] **Step 2: Run the tests to verify the new ones fail**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs`
 Expected: FAIL — `initRepo` still appends the doctrine block and still does Cursor work, so the new strip/no-append assertions fail (Cursor-path tests still pass at this point since `init.mjs` hasn't changed yet; that's fine, Task 4 removes that code and those tests were already deleted above).
 
-- [ ] **Step 3: Rewrite `scripts/init.mjs`'s memory-file section**
+- [x] **Step 3: Rewrite `scripts/init.mjs`'s memory-file section**
 
 Find this block (from `// Existing AGENTS.md wins...` through the closing of that `if (!alreadyPresent)`):
 
@@ -521,12 +523,12 @@ function escapeRegExp(str) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs`
 Expected: Cursor-path tests still pass (unchanged code); the new strip/no-append tests pass. The three Cursor-only tests deleted in Step 1 are gone so there's nothing to fail there. If a strip test fails on spacing, check the fixture's exact blank-line placement against the regex — the regex consumes one leading `\n` optionally (`\\n?`) so it works whether or not a blank line precedes the marker, and always consumes through the end-marker's trailing `\n`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/init.mjs scripts/lib/__tests__/init.test.mjs
@@ -549,18 +551,18 @@ git commit -m "fix(init): stop copying doctrine block; strip legacy block instea
 - Consumes: nothing new.
 - Produces: `initRepo` no longer creates or touches `.cursor/hooks/` or `.cursor/hooks.json`. `templates/cursor/` no longer exists in the repo.
 
-- [ ] **Step 1: Confirm the current test baseline (post-Task 3) is green**
+- [x] **Step 1: Confirm the current test baseline (post-Task 3) is green**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs scripts/lib/__tests__/cursor-hooks.test.mjs`
 Expected: PASS — `init.test.mjs` passes per Task 3; `cursor-hooks.test.mjs` still passes since `init.mjs`'s Cursor code hasn't changed yet.
 
-- [ ] **Step 2: Delete `scripts/lib/__tests__/cursor-hooks.test.mjs`**
+- [x] **Step 2: Delete `scripts/lib/__tests__/cursor-hooks.test.mjs`**
 
 ```bash
 rm scripts/lib/__tests__/cursor-hooks.test.mjs
 ```
 
-- [ ] **Step 3: Remove the Cursor logic from `scripts/init.mjs`**
+- [x] **Step 3: Remove the Cursor logic from `scripts/init.mjs`**
 
 Delete the `CURSOR_SCRIPTS` constant near the top:
 
@@ -637,18 +639,18 @@ Delete the entire Cursor scripts + `hooks.json` merge block — everything from 
 
 ```
 
-- [ ] **Step 4: Delete the `templates/cursor/` directory**
+- [x] **Step 4: Delete the `templates/cursor/` directory**
 
 ```bash
 rm -rf templates/cursor
 ```
 
-- [ ] **Step 5: Run the init test suite to confirm nothing references the deleted code**
+- [x] **Step 5: Run the init test suite to confirm nothing references the deleted code**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs`
 Expected: PASS — no test in this file references `.cursor/` or `templates/cursor/` anymore (all such tests were deleted in Task 3, Step 1).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A scripts/init.mjs templates/cursor scripts/lib/__tests__/cursor-hooks.test.mjs
@@ -666,12 +668,12 @@ git commit -m "feat(init): remove Cursor support"
 - Consumes: nothing new.
 - Produces: no code change — test-only update so the suite doesn't reference deleted files.
 
-- [ ] **Step 1: Run the full suite to confirm this is the only remaining break**
+- [x] **Step 1: Run the full suite to confirm this is the only remaining break**
 
 Run: `node --test scripts/lib/__tests__/*.test.mjs`
 Expected: FAIL — `plugin.test.mjs`'s two tests that reference `templates/cursor/hooks.json`, `templates/cursor/loomwork-strategy-gate.sh`, and `templates/cursor/loomwork-close-out-gate.sh` throw `ENOENT` since Task 4 deleted those files. All other test files pass.
 
-- [ ] **Step 2: Update `'split-agents-md is absent from every hook registration'`**
+- [x] **Step 2: Update `'split-agents-md is absent from every hook registration'`**
 
 Find:
 
@@ -721,12 +723,12 @@ test('split-agents-md is absent from every hook registration', () => {
 
 Note: `fs.readdirSync(path.join(ROOT, 'hooks'))` now also lists the `lib/` subdirectory created in Task 1 — `.filter((entry) => entry.endsWith('.sh'))` already excludes it since `lib` has no `.sh` suffix, so no further change is needed there.
 
-- [ ] **Step 3: Run the full suite to confirm everything passes**
+- [x] **Step 3: Run the full suite to confirm everything passes**
 
 Run: `node --test scripts/lib/__tests__/*.test.mjs`
 Expected: PASS — every test file green.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/lib/__tests__/plugin.test.mjs
@@ -747,7 +749,7 @@ git commit -m "test(plugin): drop deleted Cursor file references"
 - Consumes: nothing new.
 - Produces: no code change — documentation only. No task depends on this one.
 
-- [ ] **Step 1: Update `AGENTS.md`**
+- [x] **Step 1: Update `AGENTS.md`**
 
 In the Project Structure section, find:
 
@@ -834,7 +836,7 @@ Replace with:
 Use descriptive behavior-focused test names, temporary consumer repositories, and fixtures for parsing cases. Cover changed behavior and failure paths; hook changes should exercise both the Claude Code and Codex payload shapes. No numeric coverage threshold is configured.
 ```
 
-- [ ] **Step 2: Update `skills/init/SKILL.md`**
+- [x] **Step 2: Update `skills/init/SKILL.md`**
 
 Find the frontmatter `description` line:
 
@@ -869,7 +871,7 @@ if found — the doctrine itself is delivered live by the plugin's
 strategy file.
 ```
 
-- [ ] **Step 3: Update `references/PLAYBOOK.md`**
+- [x] **Step 3: Update `references/PLAYBOOK.md`**
 
 Find the hook enforcement table:
 
@@ -923,17 +925,17 @@ Find (a few lines below, in the surrounding prose about per-harness enforcement 
 
 Read the rest of this paragraph in the file (it continues past what's quoted above) to find where Cursor is introduced as a third harness, and remove that paragraph/bullet entirely, since Cursor is no longer a supported harness. Search the file for the string `Cursor` after this point and remove each remaining mention, keeping the surrounding Claude Code / Codex prose intact.
 
-- [ ] **Step 4: Search the three edited files for any remaining `Cursor` mentions**
+- [x] **Step 4: Search the three edited files for any remaining `Cursor` mentions**
 
 Run: `grep -in cursor AGENTS.md skills/init/SKILL.md references/PLAYBOOK.md`
 Expected: no output (empty). If any line prints, read its context and remove or rewrite it consistent with the edits above — do not leave a partial mention.
 
-- [ ] **Step 5: Run the full test suite one more time**
+- [x] **Step 5: Run the full test suite one more time**
 
 Run: `node --test scripts/lib/__tests__/*.test.mjs`
 Expected: PASS. Documentation changes don't affect test assertions, but this confirms nothing in the doc edits accidentally touched code.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add AGENTS.md skills/init/SKILL.md references/PLAYBOOK.md
@@ -944,12 +946,12 @@ git commit -m "docs: remove Cursor support docs; document runtime doctrine injec
 
 ## Final Verification
 
-- [ ] **Step 1: Run the entire suite once more from a clean state**
+- [x] **Step 1: Run the entire suite once more from a clean state**
 
 Run: `node --test scripts/lib/__tests__/*.test.mjs`
 Expected: PASS, 0 failures.
 
-- [ ] **Step 2: Manually exercise `doctrine-gate.sh` against this repo itself**
+- [x] **Step 2: Manually exercise `doctrine-gate.sh` against this repo itself**
 
 Run:
 ```bash
@@ -957,7 +959,7 @@ echo '{"hook_event_name":"SessionStart","source":"startup","cwd":"'"$(pwd)"'"}' 
 ```
 Expected: JSON with `.hookSpecificOutput.hookEventName == "SessionStart"` and `.hookSpecificOutput.additionalContext` containing the text `Spec-Driven Development (loomwork)` (loomwork's own repo has `docs/superpowers/specs/`, so it is opted in).
 
-- [ ] **Step 3: Manually exercise `init.mjs` against a disposable repo to confirm no Cursor artifacts and correct legacy-block stripping**
+- [x] **Step 3: Manually exercise `init.mjs` against a disposable repo to confirm no Cursor artifacts and correct legacy-block stripping**
 
 ```bash
 tmp=$(mktemp -d)
