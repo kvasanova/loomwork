@@ -10,9 +10,9 @@ Announce: "Using loomwork:model-assignment to pin subagent model aliases on the 
 
 Invoke this skill only when the user asks for it. It is not automatic and no
 hook fires it. Run it in the session that will execute the plan — the
-aliases you confirm as available in Step 3 are only true for the session
+aliases you confirm as available in Step 6 are only true for the session
 running the skill, and this is also the session whose judgment approves the
-table in Step 6.
+table in Step 7.
 
 **Goal:** append a `## Model Assignment` table to an existing plan in
 `docs/superpowers/plans/`, so `superpowers:subagent-driven-development` (SDD)
@@ -24,7 +24,7 @@ nothing else. `superpowers:executing-plans` dispatches no subagents — that
 session executes every task in its own context, so there is no `Agent` call
 and no `model` parameter for a table to control. A table on a plan destined
 for `executing-plans` is inert: harmless, but it buys nothing. State this to
-the user after writing the table (Step 7).
+the user after writing the table (Step 8).
 
 **No effort column.** The `Agent` dispatch tool takes `model` as a bare
 alias and exposes no per-call effort or thinking parameter — an exact model
@@ -131,13 +131,21 @@ end of the plan file (after its last existing section):
 | final review | reviewer | opus | whole-branch, always most capable |
 
 Rows absent here fall back to the SDD Model Selection rubric.
+
+Dispatch discipline:
+
+- Every dispatch for a task and role uses that row's alias, including every
+  re-dispatch: fix rounds, NEEDS_CONTEXT, BLOCKED, and SDD's fix-loop rounds
+  4-5. Never re-dispatch on a more capable alias than the row selects.
+- After 3 failed attempts on the same task, stop and ask the user how to
+  proceed. Only the user may approve a different alias; ledger the approval.
 ```
 
-Replace the example rows with the table proposed and approved in Step 7. The
-trailer line after the table is fixed text — copy it verbatim, do not
-paraphrase or omit it. The column header is `Model`, and its value is the
-literal alias to pass to the `Agent` tool's `model` parameter at dispatch
-time — not a tier word or a description.
+Replace the example rows with the table proposed and approved in Step 7.
+Everything after the table — the fallback line and the dispatch-discipline block — is
+fixed text: copy it verbatim, do not paraphrase or omit it. The column header
+is `Model`, and its value is the literal alias to pass to the `Agent` tool's
+`model` parameter at dispatch time — not a tier word or a description.
 
 Then state to the user:
 
