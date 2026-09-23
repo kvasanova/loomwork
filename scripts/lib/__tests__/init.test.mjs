@@ -23,12 +23,7 @@ test('initRepo scaffolds a fresh repo and is idempotent', () => {
   assert.ok(fs.existsSync(path.join(root, 'docs/solutions')));
   assert.ok(!fs.existsSync(path.join(root, 'STRATEGY.md')));
   assert.ok(first.some((a) => a.includes('STRATEGY.md') && a.includes('ce-strategy')));
-  assert.ok(fs.existsSync(path.join(root, '.cursor/hooks.json')));
-  assert.ok(fs.existsSync(path.join(root, '.cursor/hooks/loomwork-strategy-gate.sh')));
-  assert.ok(fs.existsSync(path.join(root, '.cursor/hooks/loomwork-close-out-gate.sh')));
-  const agents = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
-  assert.match(agents, /<!-- loomwork:begin -->/);
-  assert.match(agents, /<!-- loomwork:end -->/);
+  assert.ok(!fs.existsSync(path.join(root, 'AGENTS.md')));
   assert.ok(!fs.existsSync(path.join(root, 'CLAUDE.md')));
 
   // Second run performs no writes. The missing-strategy-file action persists
@@ -75,101 +70,74 @@ test('initRepo reports no strategy action when the strategy file exists', () => 
   assert.ok(!actions.some((a) => a.includes('ce-strategy')));
 });
 
-test('initRepo merges into an existing .cursor/hooks.json, preserving foreign entries', () => {
+test('initRepo no longer appends the doctrine block to a fresh repo', () => {
   const root = freshRepo();
-  fs.mkdirSync(path.join(root, '.cursor'), { recursive: true });
-  fs.writeFileSync(
-    path.join(root, '.cursor/hooks.json'),
-    JSON.stringify({ version: 1, hooks: { beforeSubmitPrompt: [{ command: '.cursor/hooks/other.sh' }] } }),
-  );
-  initRepo(root, PLUGIN_ROOT);
-  const merged = JSON.parse(fs.readFileSync(path.join(root, '.cursor/hooks.json'), 'utf8'));
-  const cmds = merged.hooks.beforeSubmitPrompt.map((e) => e.command);
-  assert.ok(cmds.includes('.cursor/hooks/other.sh'));
-  assert.ok(cmds.includes('bash .cursor/hooks/loomwork-strategy-gate.sh'));
-  assert.equal(merged.hooks.postToolUse.length, 2);
-});
-
-test('initRepo migrates legacy loomwork hook entries instead of duplicating them', () => {
-  const root = freshRepo();
-  fs.mkdirSync(path.join(root, '.cursor'), { recursive: true });
-  fs.writeFileSync(
-    path.join(root, '.cursor/hooks.json'),
-    JSON.stringify({
-      version: 1,
-      hooks: {
-        beforeSubmitPrompt: [
-          { command: '.cursor/hooks/loomwork-strategy-gate.sh' },
-          { command: '.cursor/hooks/loomwork-close-out-gate.sh' },
-        ],
-        postToolUse: [
-          { command: '.cursor/hooks/loomwork-strategy-gate.sh', matcher: 'Read|Skill' },
-          { command: '.cursor/hooks/loomwork-close-out-gate.sh', matcher: 'Read|Skill' },
-        ],
-      },
-    }),
-  );
-  initRepo(root, PLUGIN_ROOT);
-  const merged = JSON.parse(fs.readFileSync(path.join(root, '.cursor/hooks.json'), 'utf8'));
-
-  assert.equal(merged.hooks.beforeSubmitPrompt.length, 2);
-  assert.equal(merged.hooks.postToolUse.length, 2);
-  for (const entry of Object.values(merged.hooks).flat()) {
-    assert.match(entry.command, /^bash \.cursor\/hooks\/loomwork-/);
-  }
-  for (const entry of merged.hooks.postToolUse) {
-    assert.equal(entry.matcher, 'Read|Skill');
-  }
-});
-
-test('initRepo re-copies Cursor hook scripts when they drift from the templates', () => {
-  const root = freshRepo();
-  initRepo(root, PLUGIN_ROOT);
-  const gate = path.join(root, '.cursor/hooks/loomwork-strategy-gate.sh');
-  fs.writeFileSync(gate, '#!/usr/bin/env bash\n# stale copy\n');
-
   const actions = initRepo(root, PLUGIN_ROOT);
-  assert.ok(actions.some((a) => a.includes('loomwork-strategy-gate.sh')));
-  assert.match(fs.readFileSync(gate, 'utf8'), /do NOT Read or open the strategy file/);
-});
-
-test('initRepo appends to AGENTS.md when CLAUDE.md is absent and AGENTS.md exists', () => {
-  const root = freshRepo();
-  fs.writeFileSync(path.join(root, 'AGENTS.md'), '# Agents\n');
-  initRepo(root, PLUGIN_ROOT);
-  assert.match(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /<!-- loomwork:begin -->/);
-  assert.ok(!fs.existsSync(path.join(root, 'CLAUDE.md')));
-});
-
-test('initRepo prefers AGENTS.md over CLAUDE.md when both exist', () => {
-  const root = freshRepo();
-  fs.writeFileSync(path.join(root, 'AGENTS.md'), '# Agents\n');
-  fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# Claude\n');
-  const actions = initRepo(root, PLUGIN_ROOT);
-  assert.match(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /<!-- loomwork:begin -->/);
-  assert.equal(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), '# Claude\n');
-  assert.ok(actions.some((a) => a.includes('AGENTS.md')));
-});
-
-test('initRepo leaves an existing block in CLAUDE.md alone instead of copying it to AGENTS.md', () => {
-  const root = freshRepo();
-  fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# Claude\n');
-  initRepo(root, PLUGIN_ROOT);
-  const claudeAfterFirst = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
-  assert.match(claudeAfterFirst, /<!-- loomwork:begin -->/);
-
-  // AGENTS.md shows up later; the block must not be duplicated into it.
-  fs.writeFileSync(path.join(root, 'AGENTS.md'), '# Agents\n');
-  const actions = initRepo(root, PLUGIN_ROOT);
-  assert.equal(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), '# Agents\n');
-  assert.equal(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), claudeAfterFirst);
+  assert.ok(!fs.existsSync(path.join(root, 'AGENTS.md')));
   assert.ok(!actions.some((a) => a.includes('appended loomwork block')));
 });
 
-test('initRepo appends to CLAUDE.md when it is the only memory file', () => {
+test('initRepo strips a legacy loomwork block from AGENTS.md', () => {
   const root = freshRepo();
-  fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# Claude\n');
-  initRepo(root, PLUGIN_ROOT);
-  assert.match(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), /<!-- loomwork:begin -->/);
-  assert.ok(!fs.existsSync(path.join(root, 'AGENTS.md')));
+  fs.writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    '# Agents\n\nSome content.\n\n<!-- loomwork:begin -->\nold doctrine text\n<!-- loomwork:end -->\n',
+  );
+  const actions = initRepo(root, PLUGIN_ROOT);
+  const after = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.doesNotMatch(after, /<!-- loomwork:begin -->/);
+  assert.doesNotMatch(after, /old doctrine text/);
+  assert.match(after, /# Agents\n\nSome content\.\n/);
+  assert.ok(actions.some((a) => a === 'removed legacy loomwork block from AGENTS.md'));
+});
+
+test('initRepo strips a legacy loomwork block from CLAUDE.md when present', () => {
+  const root = freshRepo();
+  fs.writeFileSync(
+    path.join(root, 'CLAUDE.md'),
+    '# Claude\n\n<!-- loomwork:begin -->\nold doctrine text\n<!-- loomwork:end -->\n',
+  );
+  const actions = initRepo(root, PLUGIN_ROOT);
+  const after = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
+  assert.doesNotMatch(after, /<!-- loomwork:begin -->/);
+  assert.ok(actions.some((a) => a === 'removed legacy loomwork block from CLAUDE.md'));
+});
+
+test('initRepo strips legacy blocks from both AGENTS.md and CLAUDE.md independently when both carry one', () => {
+  const root = freshRepo();
+  fs.writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    '# Agents\n\n<!-- loomwork:begin -->\nagents doctrine\n<!-- loomwork:end -->\n',
+  );
+  fs.writeFileSync(
+    path.join(root, 'CLAUDE.md'),
+    '# Claude\n\n<!-- loomwork:begin -->\nclaude doctrine\n<!-- loomwork:end -->\n',
+  );
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /loomwork:begin/);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), /loomwork:begin/);
+  assert.ok(actions.some((a) => a === 'removed legacy loomwork block from AGENTS.md'));
+  assert.ok(actions.some((a) => a === 'removed legacy loomwork block from CLAUDE.md'));
+});
+
+test('initRepo strips a legacy block that sits mid-file with content after it', () => {
+  const root = freshRepo();
+  fs.writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    '# Agents\n\n<!-- loomwork:begin -->\nold doctrine\n<!-- loomwork:end -->\n\n## Later section\n\nMore content here.\n',
+  );
+  const actions = initRepo(root, PLUGIN_ROOT);
+  const after = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.doesNotMatch(after, /loomwork:begin/);
+  assert.match(after, /## Later section\n\nMore content here\.\n/);
+  assert.match(after, /# Agents\n/);
+  assert.ok(actions.some((a) => a === 'removed legacy loomwork block from AGENTS.md'));
+});
+
+test('initRepo reports nothing doctrine-related when no legacy block exists', () => {
+  const root = freshRepo();
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), '# Agents\n\nNo loomwork block here.\n');
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(!actions.some((a) => a.includes('loomwork block')));
+  assert.equal(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), '# Agents\n\nNo loomwork block here.\n');
 });

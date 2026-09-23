@@ -10,6 +10,10 @@ const MARKER_BEGIN = '<!-- loomwork:begin -->';
 const MARKER_END = '<!-- loomwork:end -->';
 const CURSOR_SCRIPTS = ['loomwork-strategy-gate.sh', 'loomwork-close-out-gate.sh'];
 
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
   const config = loadConfig(repoRoot);
   const actions = [];
@@ -96,25 +100,23 @@ export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
     actions.push(hadHooksJson ? 'merged .cursor/hooks.json' : 'wrote .cursor/hooks.json');
   }
 
-  // Existing AGENTS.md wins because it is tool-agnostic; existing CLAUDE.md
-  // remains supported, and a repository with neither creates AGENTS.md.
-  const memoryCandidates = ['AGENTS.md', 'CLAUDE.md'].map((f) => path.join(repoRoot, f));
-  const memoryFile =
-    memoryCandidates.find((p) => fs.existsSync(p)) ?? path.join(repoRoot, 'AGENTS.md');
-  const existing = fs.existsSync(memoryFile) ? fs.readFileSync(memoryFile, 'utf8') : '';
-  // Check every candidate, not just the selected one. A repo initialized before
-  // AGENTS.md took precedence has the block in CLAUDE.md; appending a second
-  // copy to AGENTS.md would give it two. Leave the existing one where it is.
-  const alreadyPresent = memoryCandidates.some(
-    (p) => fs.existsSync(p) && fs.readFileSync(p, 'utf8').includes(MARKER_BEGIN),
+  // The doctrine is no longer copied into consumer repos — the plugin's
+  // SessionStart hook (hooks/doctrine-gate.sh) injects it live from
+  // templates/claude-md-block.md instead, so every repo stays current when
+  // the plugin upgrades. A repo initialized before this change may still
+  // carry the old marker-guarded block; strip it so the doctrine isn't
+  // duplicated (once from the file, once from the hook).
+  const legacyBlockRe = new RegExp(
+    `\\n?${escapeRegExp(MARKER_BEGIN)}\\n[\\s\\S]*?${escapeRegExp(MARKER_END)}\\n`,
   );
-  if (!alreadyPresent) {
-    const block = fs
-      .readFileSync(path.join(pluginRoot, 'templates/claude-md-block.md'), 'utf8')
-      .trimEnd();
-    const sep = existing === '' || existing.endsWith('\n') ? '' : '\n';
-    fs.writeFileSync(memoryFile, `${existing}${sep}\n${MARKER_BEGIN}\n${block}\n${MARKER_END}\n`);
-    actions.push(`appended loomwork block to ${path.basename(memoryFile)}`);
+  for (const filename of ['AGENTS.md', 'CLAUDE.md']) {
+    const filePath = path.join(repoRoot, filename);
+    if (!fs.existsSync(filePath)) continue;
+    const content = fs.readFileSync(filePath, 'utf8');
+    if (!content.includes(MARKER_BEGIN)) continue;
+    const stripped = content.replace(legacyBlockRe, '');
+    fs.writeFileSync(filePath, stripped);
+    actions.push(`removed legacy loomwork block from ${filename}`);
   }
 
   return actions;
