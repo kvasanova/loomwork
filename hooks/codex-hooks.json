@@ -1,5 +1,5 @@
 {
-  "description": "Loomwork strategy and close-out gates for explicit Codex skill invocations.",
+  "description": "Loomwork doctrine at Codex session start and strategy and close-out gates for explicit skill invocations.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -12,6 +12,17 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/close-out-gate.sh\"",
+            "additionalContextLimit": 2500
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${PLUGIN_ROOT}/hooks/doctrine-gate.sh\"",
             "additionalContextLimit": 2500
           }
         ]
