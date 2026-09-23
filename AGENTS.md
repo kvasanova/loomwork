@@ -4,11 +4,11 @@
 
 Loomwork integrates superpowers and compound-engineering workflows. `scripts/` contains the Node.js entry points (`init.mjs`, `sdd-audit.mjs`); `scripts/lib/` holds configuration, parsing, pairing, GitHub access, rules, and reporting. Tests and Markdown fixtures live in `scripts/lib/__tests__/`.
 
-`hooks/` contains shared Claude Code and Codex gates plus their runtime registrations; `templates/cursor/` contains the Cursor counterparts. Other scaffolding assets live in `templates/`. The portable manifest is `plugin.json`; `.claude-plugin/plugin.json` is the Claude compatibility manifest. Command instructions live in `commands/`, and skills in `skills/`. See `references/PLAYBOOK.md` for lifecycle conventions and `docs/superpowers/{specs,plans}/` for design records.
+`hooks/` contains shared Claude Code and Codex gates plus their runtime registrations, and `hooks/lib/` holds logic shared between them. Other scaffolding assets live in `templates/`. The portable manifest is `plugin.json`; `.claude-plugin/plugin.json` is the Claude compatibility manifest. Command instructions live in `commands/`, and skills in `skills/`. See `references/PLAYBOOK.md` for lifecycle conventions and `docs/superpowers/{specs,plans}/` for design records.
 
 ## This is a plugin, not an application
 
-There is no `package.json`, no dependencies, and no build step. The repository ships CLIs, Bash hook gates, Cursor mirrors of those gates, and instructions-only Markdown (skills and commands).
+There is no `package.json`, no dependencies, and no build step. The repository ships CLIs, Bash hook gates, and instructions-only Markdown (skills and commands).
 
 The **consumer repository** — some other repository that installs loomwork — is the runtime target of everything here. Keep the two separate: `repoRoot` in the code always means the consumer repository, resolved by `resolveRepoRoot()`. The plugin's own root is a separate argument (`pluginRoot`).
 
@@ -19,7 +19,7 @@ Use Node.js with its built-in test runner. Hook execution also requires Bash and
 - `node --test scripts/lib/__tests__/*.test.mjs` — run the full suite.
 - `node --test scripts/lib/__tests__/init.test.mjs` — run one test file.
 - `node scripts/sdd-audit.mjs --offline` — audit local spec/plan drift; add `--json` for structured output, `--stale-days N` to override the verified age threshold. Exit codes: 0 clean, 1 findings, 2 error. This audit is advisory, not a CI gate.
-- `node scripts/init.mjs` — scaffold the resolved repository, updating documentation and Cursor hooks. Use a disposable consumer repository when testing initialization.
+- `node scripts/init.mjs` — scaffold the resolved repository's spec/plan/solutions directories and report a missing `STRATEGY.md`. Use a disposable consumer repository when testing initialization.
 
 ## Domain model
 
@@ -36,13 +36,11 @@ The audit pipeline is a straight line: `config → parse → pair → rules → 
 
 ## Hooks: three runtimes, one behavior
 
-Claude Code reads `hooks/hooks.json` as its `PostToolUse` registration. Codex reads `hooks/codex-hooks.json` as its `UserPromptSubmit` registration and can therefore observe only explicit `$superpowers:...` prompts. **Cursor does not read either plugin registration** — it reads `.cursor/hooks.json` from the workspace, so `scripts/init.mjs` is the installer for the Cursor copies. A change to `templates/cursor/*` therefore reaches an already-initialized repository only when the user re-runs init. `init.mjs` migrates entries in place, rewriting stale `command` and `matcher` values rather than appending duplicates.
+Claude Code reads `hooks/hooks.json` as its `PostToolUse` and `SessionStart` registrations. Codex reads `hooks/codex-hooks.json` as its `UserPromptSubmit` registration and can therefore observe only explicit `$superpowers:...` prompts. The loomwork doctrine itself is delivered by `hooks/doctrine-gate.sh` on `SessionStart`, sourced live from `templates/claude-md-block.md` — it is no longer copied into consumer repos by init, so an upgraded plugin's doctrine reaches every opted-in repo without a re-run. Cursor is not supported directly; run this plugin's Claude Code surface instead.
 
-The Claude and Cursor `hooks.json` files match broadly on the `Skill` tool and discriminate on skill name **inside the script**, via `jq` on `.tool_input.skill`. Keep matching there, not in the matcher. The shared gate scripts accept both Claude `PostToolUse` and Codex `UserPromptSubmit` payloads and emit the incoming event name in `hookSpecificOutput`. Root resolution is ordered: a non-empty `CLAUDE_PROJECT_DIR` is used exactly as given; otherwise the payload's `.cwd` walks **up** to the nearest ancestor holding `.git` or `.loomwork.json` (Codex may start in a subdirectory), falling back to the raw `.cwd` when no marker is found so uninitialized repositories still get nudged. Both gates exit silently when neither resolves. The walk tests `.git` with `-e`, not `-d`, so a worktree's `.git` **file** counts.
+The Claude `hooks.json` matches broadly on the `Skill` tool and discriminates on skill name **inside the script**, via `jq` on `.tool_input.skill`. Keep matching there, not in the matcher. The shared gate scripts accept both Claude `PostToolUse`/`SessionStart` and Codex `UserPromptSubmit` payloads and emit the incoming event name in `hookSpecificOutput`. Root resolution (shared via `hooks/lib/resolve-repo-root.sh`) is ordered: a non-empty `CLAUDE_PROJECT_DIR` is used exactly as given; otherwise the payload's `.cwd` walks **up** to the nearest ancestor holding `.git` or `.loomwork.json` (Codex may start in a subdirectory), falling back to the raw `.cwd` when no marker is found so uninitialized repositories still get nudged. All gates exit silently when neither resolves. The walk tests `.git` with `-e`, not `-d`, so a worktree's `.git` **file** counts.
 
 The gates match with Bash's `=~` against a pattern variable referenced **unquoted** — never `echo … | grep -q`. Quoting the pattern would make it a literal string and silently break every match. The pipeline form is a fixed bug, not a style preference: `grep -q` exits on its first match, and the resulting write failure under `set -o pipefail` combined with `|| exit 0` turned a real prompt into a silent no-op (measured: a trigger line followed by a ≥128KB tail was dropped 10/10). `hooks.test.mjs` guards this with a newline-led 192KB prompt; keep both the newline and the size, or the guard passes against the very bug it exists to catch.
-
-Cursor commands must be spelled `bash .cursor/hooks/loomwork-*.sh`. A bare `.sh` path makes Cursor open the file in an editor tab on Windows instead of executing it.
 
 The strategy gate injects the whole strategy file into context and explicitly instructs the agent **not** to read that file or the hook scripts, which would place a second copy in context. Any edit to that message must keep the instruction; `hooks.test.mjs` asserts it.
 
@@ -58,9 +56,9 @@ Match existing JavaScript: ES modules (`.mjs`), `node:` imports, two-space inden
 
 ## Testing Guidelines
 
-Tests use `node:test` and `node:assert/strict`. They are behavior-level rather than unit-level: `init.test.mjs` and `cursor-hooks.test.mjs` scaffold a real temporary directory and assert files on disk, `hooks.test.mjs` spawns the actual Bash gates with JSON on stdin and asserts the emitted `hookSpecificOutput`, and `rules.test.mjs` and `parse.test.mjs` use Markdown fixtures in `__tests__/fixtures/`.
+Tests use `node:test` and `node:assert/strict`. They are behavior-level rather than unit-level: `init.test.mjs` scaffolds a real temporary directory and asserts files on disk, `hooks.test.mjs` spawns the actual Bash gates with JSON on stdin and asserts the emitted `hookSpecificOutput`, and `rules.test.mjs` and `parse.test.mjs` use Markdown fixtures in `__tests__/fixtures/`.
 
-Use descriptive behavior-focused test names, temporary consumer repositories, and fixtures for parsing cases. Cover changed behavior and failure paths; hook changes should exercise both Claude Code and Cursor variants. No numeric coverage threshold is configured.
+Use descriptive behavior-focused test names, temporary consumer repositories, and fixtures for parsing cases. Cover changed behavior and failure paths; hook changes should exercise both the Claude Code and Codex payload shapes. No numeric coverage threshold is configured.
 
 ## Commit & Pull Request Guidelines
 

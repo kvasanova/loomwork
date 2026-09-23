@@ -1,6 +1,8 @@
 ---
 issue: 17
-status: approved
+status: implemented
+implemented_in: "commit 4ce86f1"
+verified: 2026-09-23
 ---
 
 # Inject loomwork doctrine at runtime instead of copying it into consumer repos
@@ -97,13 +99,13 @@ This spec's `init.mjs` change (removing the doctrine-block write, stripping lega
 
 ## Acceptance
 
-- [ ] A Claude Code session started inside a repo with `.loomwork.json` or `docs/superpowers/specs/` present receives the current doctrine text via `SessionStart` `additionalContext`, sourced from the plugin's own `templates/claude-md-block.md` (not a repo copy).
-- [ ] A Claude Code session started inside a repo with neither marker receives no injection from `doctrine-gate.sh`.
-- [ ] `doctrine-gate.sh` stays silent when neither `CLAUDE_PROJECT_DIR` nor a resolvable `.cwd` is available, matching the other two gates.
-- [ ] Running `node scripts/init.mjs` on a repo whose `AGENTS.md` or `CLAUDE.md` contains a `<!-- loomwork:begin -->...<!-- loomwork:end -->` block removes that block and reports it.
-- [ ] Running `node scripts/init.mjs` on a repo with no legacy block makes no doctrine-related change and reports nothing doctrine-related.
-- [ ] `node scripts/init.mjs` no longer creates or touches `.cursor/hooks/` or `.cursor/hooks.json`.
-- [ ] `templates/cursor/`, the Cursor branch of `init.mjs`, and `cursor-hooks.test.mjs` are removed from the repo.
-- [ ] `AGENTS.md`, `skills/init/SKILL.md`, and `references/PLAYBOOK.md` no longer mention Cursor-specific init behavior.
-- [ ] `strategy-gate.sh` and `close-out-gate.sh` behave identically to before (same test suite passes) after the shared root-resolution extraction.
-- [ ] `node --test scripts/lib/__tests__/*.test.mjs` passes.
+- [x] A Claude Code session started inside a repo with `.loomwork.json` or `docs/superpowers/specs/` present receives the current doctrine text via `SessionStart` `additionalContext`, sourced from the plugin's own `templates/claude-md-block.md` (not a repo copy).
+- [x] A Claude Code session started inside a repo with neither marker receives no injection from `doctrine-gate.sh`.
+- [x] `doctrine-gate.sh` stays silent when neither `CLAUDE_PROJECT_DIR` nor a resolvable `.cwd` is available, matching the other two gates.
+- [x] Running `node scripts/init.mjs` on a repo whose `AGENTS.md` or `CLAUDE.md` contains a `<!-- loomwork:begin -->...<!-- loomwork:end -->` block removes that block and reports it.
+- [x] Running `node scripts/init.mjs` on a repo with no legacy block makes no doctrine-related change and reports nothing doctrine-related.
+- [x] `node scripts/init.mjs` no longer creates or touches `.cursor/hooks/` or `.cursor/hooks.json`.
+- [x] `templates/cursor/`, the Cursor branch of `init.mjs`, and `cursor-hooks.test.mjs` are removed from the repo.
+- [x] `AGENTS.md`, `skills/init/SKILL.md`, and `references/PLAYBOOK.md` no longer mention Cursor-specific init behavior.
+- [x] `strategy-gate.sh` and `close-out-gate.sh` behave identically to before (same test suite passes) after the shared root-resolution extraction.
+- [x] `node --test scripts/lib/__tests__/*.test.mjs` passes.

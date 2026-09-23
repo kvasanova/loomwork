@@ -60,11 +60,7 @@ test('split-agents-md skill stays manual and host-neutral', () => {
 });
 
 test('split-agents-md is absent from every hook registration', () => {
-  const registrations = [
-    'hooks/hooks.json',
-    'hooks/codex-hooks.json',
-    'templates/cursor/hooks.json',
-  ];
+  const registrations = ['hooks/hooks.json', 'hooks/codex-hooks.json'];
   for (const relativePath of registrations) {
     const contents = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
     assert.doesNotMatch(contents, /split-agents-md/, `${relativePath} references split-agents-md`);
@@ -74,7 +70,7 @@ test('split-agents-md is absent from every hook registration', () => {
     .filter((entry) => entry.endsWith('.sh'))
     .map((entry) => `hooks/${entry}`);
   assert.ok(gates.length > 0, 'expected at least one gate script');
-  for (const relativePath of [...gates, 'templates/cursor/loomwork-strategy-gate.sh', 'templates/cursor/loomwork-close-out-gate.sh']) {
+  for (const relativePath of gates) {
     const contents = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
     assert.doesNotMatch(contents, /split-agents-md/, `${relativePath} references split-agents-md`);
   }

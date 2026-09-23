@@ -31,6 +31,10 @@ function codexPromptEvent(prompt, cwd) {
   return { hook_event_name: 'UserPromptSubmit', prompt, cwd };
 }
 
+function sessionStartEvent(cwd) {
+  return { hook_event_name: 'SessionStart', source: 'startup', cwd };
+}
+
 test('strategy-gate fires on plugin-qualified brainstorming with default STRATEGY.md', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
   fs.writeFileSync(path.join(root, 'STRATEGY.md'), '# My Strategy\ncontent-marker-42\n');
@@ -190,6 +194,64 @@ test('close-out-gate reminds on an explicit Codex finishing prompt', () => {
 test('close-out-gate ignores unrelated Codex prompts', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-codex-'));
   const result = runHook('close-out-gate.sh', codexPromptEvent('$superpowers:brainstorming', root));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('doctrine-gate injects the doctrine block for a repo with docs/superpowers/specs', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.mkdirSync(path.join(root, 'docs/superpowers/specs'), { recursive: true });
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root), root);
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout);
+  assert.equal(out.hookSpecificOutput.hookEventName, 'SessionStart');
+  assert.match(out.hookSpecificOutput.additionalContext, /Spec-Driven Development \(loomwork\)/);
+});
+
+test('doctrine-gate injects the doctrine block for a repo with .loomwork.json', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ specsDir: 'docs/specs' }));
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root), root);
+  assert.equal(result.status, 0, result.stderr);
+  const out = JSON.parse(result.stdout);
+  assert.match(out.hookSpecificOutput.additionalContext, /Spec-Driven Development \(loomwork\)/);
+});
+
+test('doctrine-gate respects a custom specsDir from .loomwork.json for opt-in detection', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ specsDir: 'docs/specs' }));
+  fs.mkdirSync(path.join(root, 'docs/specs'), { recursive: true });
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root), root);
+  const out = JSON.parse(result.stdout);
+  assert.match(out.hookSpecificOutput.additionalContext, /Spec-Driven Development \(loomwork\)/);
+});
+
+test('doctrine-gate stays silent for a repo with no loomwork markers', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root), root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('doctrine-gate stays silent when CLAUDE_PROJECT_DIR is unset and no cwd resolves', () => {
+  const result = runHook('doctrine-gate.sh', { hook_event_name: 'SessionStart', source: 'startup' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('doctrine-gate stays silent on malformed .loomwork.json rather than crashing', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), '{ not valid json');
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root), root);
+  assert.equal(result.status, 0, result.stderr);
+  // Falls back to default specsDir for the opt-in check; no default dir exists here, so silent.
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('doctrine-gate ignores non-SessionStart events', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
+  fs.mkdirSync(path.join(root, 'docs/superpowers/specs'), { recursive: true });
+  const result = runHook('doctrine-gate.sh', skillEvent('superpowers:brainstorming'), root);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), '');
 });

@@ -1,6 +1,6 @@
 ---
 name: init
-description: Initialize the current consumer repository for loomwork by scaffolding SDD directories, Cursor hook mirrors, and the marker-guarded AGENTS.md or CLAUDE.md guidance block. Use when setting up loomwork in a repository or refreshing copied Cursor hooks after a plugin update.
+description: Initialize the current consumer repository for loomwork by scaffolding SDD directories and removing any legacy marker-guarded doctrine block from AGENTS.md or CLAUDE.md. Use when setting up loomwork in a repository.
 ---
 
 # Initialize Loomwork
@@ -36,11 +36,12 @@ before executing it, while leaving the shell working directory at the consumer
 repository. Do not look up the plugin from the consumer repository and do not
 require a plugin-root environment variable.
 
-The script creates missing spec, plan, and solution directories; installs or
-refreshes the Cursor hook mirrors; and adds one marker-guarded loomwork block.
-It prefers an existing `AGENTS.md`, otherwise an existing `CLAUDE.md`, and
-creates `AGENTS.md` when neither exists. Paths come from `.loomwork.json` when
-present. The script never creates or edits the strategy file.
+The script creates missing spec, plan, and solution directories, and removes
+a pre-existing marker-guarded loomwork block from `AGENTS.md` or `CLAUDE.md`
+if found — the doctrine itself is delivered live by the plugin's
+`SessionStart` hook, not copied into the repo. Paths come from
+`.loomwork.json` when present. The script never creates or edits the
+strategy file.
 
 ## 3. Route missing strategy ownership
 
