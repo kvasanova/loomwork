@@ -42,7 +42,7 @@ export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
   // carry the old marker-guarded block; strip it so the doctrine isn't
   // duplicated (once from the file, once from the hook).
   const legacyBlockRe = new RegExp(
-    `\\n?${escapeRegExp(MARKER_BEGIN)}\\n[\\s\\S]*?${escapeRegExp(MARKER_END)}\\n`,
+    `(?<=^|\\n)\\n?${escapeRegExp(MARKER_BEGIN)}\\r?\\n[\\s\\S]*?${escapeRegExp(MARKER_END)}(?:\\r?\\n|$)`,
   );
   for (const filename of ['AGENTS.md', 'CLAUDE.md']) {
     const filePath = path.join(repoRoot, filename);
@@ -50,6 +50,7 @@ export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
     const content = fs.readFileSync(filePath, 'utf8');
     if (!content.includes(MARKER_BEGIN)) continue;
     const stripped = content.replace(legacyBlockRe, '');
+    if (stripped === content) continue;
     fs.writeFileSync(filePath, stripped);
     actions.push(`removed legacy loomwork block from ${filename}`);
   }

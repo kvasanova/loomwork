@@ -91,6 +91,38 @@ test('initRepo strips a legacy loomwork block from AGENTS.md', () => {
   assert.ok(actions.some((a) => a === 'removed legacy loomwork block from AGENTS.md'));
 });
 
+test('initRepo strips a legacy block with no trailing newline before EOF', () => {
+  const root = freshRepo();
+  fs.writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    '# Agents\n\n<!-- loomwork:begin -->\nold doctrine\n<!-- loomwork:end -->',
+  );
+  const actions = initRepo(root, PLUGIN_ROOT);
+  const after = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.doesNotMatch(after, /loomwork:begin/);
+  assert.ok(actions.some((a) => a === 'removed legacy loomwork block from AGENTS.md'));
+});
+
+test('initRepo does not report a removal on a second run once the block is gone', () => {
+  const root = freshRepo();
+  fs.writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    '# Agents\n\n<!-- loomwork:begin -->\nold doctrine\n<!-- loomwork:end -->\n',
+  );
+  initRepo(root, PLUGIN_ROOT);
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(!actions.some((a) => a.includes('loomwork block')));
+});
+
+test('initRepo does not report a removal for a file that only mentions the marker inline', () => {
+  const root = freshRepo();
+  const content = 'Use `<!-- loomwork:begin -->` markers to guard the block.\n';
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), content);
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(!actions.some((a) => a.includes('loomwork block')));
+  assert.equal(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), content);
+});
+
 test('initRepo strips a legacy loomwork block from CLAUDE.md when present', () => {
   const root = freshRepo();
   fs.writeFileSync(
