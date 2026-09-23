@@ -67,23 +67,3 @@ History commonly uses `feat:`, `fix:`, `docs:`, and scoped forms such as `fix(ho
 When work has a plan/spec, include close-out updates in the same PR: add the plan’s DONE banner and update verified spec status and acceptance checkboxes. Freeze merged plans. Loomwork must not author or seed `STRATEGY.md`; route strategy changes through `compound-engineering:ce-strategy`.
 
 Loomwork applies its own doctrine to itself: its specs and plans live in `docs/superpowers/{specs,plans}/`. When a change is tracked by one of those, run the close-out procedure on the feature branch before merge — the close-out commit rides the same PR.
-
-<!-- loomwork:begin -->
-## Spec-Driven Development (loomwork)
-
-SDD lifecycle via the **loomwork** plugin — glue for **superpowers** (execution
-engine) + **compound-engineering** (`ce-strategy` → `STRATEGY.md`, `ce-compound`
-→ `docs/solutions/`, `ce-doc-review`). Doctrine: loomwork playbook
-(`references/PLAYBOOK.md` in the plugin).
-
-- Specs in `docs/superpowers/specs/`, plans in `docs/superpowers/plans/`
-  (paths configurable via `.loomwork.json`); roadmap anchor `STRATEGY.md`;
-  learnings in `docs/solutions/`.
-- Spec frontmatter: only `issue`, `status`
-  (`draft|approved|in-progress|partial|implemented|superseded`),
-  `implemented_in`, `verified`. Acceptance checkboxes live in the body only.
-- Plans freeze after merge (DONE banner + ticked boxes); specs stay current.
-- Drift check: `loomwork:audit` skill (periodic, not CI). Close-out before
-  merge: `loomwork:close-out` skill — hook-enforced on
-  `finishing-a-development-branch`.
-<!-- loomwork:end -->
