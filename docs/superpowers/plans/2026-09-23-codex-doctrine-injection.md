@@ -1,5 +1,7 @@
 # Codex Doctrine Injection Implementation Plan
 
+> **Status: DONE — shipped in PR #23 (2026-09-23).** Historical record; not maintained.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Inject the installed loomwork doctrine into opted-in Codex sessions at `SessionStart`.
@@ -51,7 +53,7 @@
 - Consumes: `sessionStartEvent(cwd)` and `runHook(script, stdinObj, projectDir)` in `hooks.test.mjs`; the latter removes ambient `CLAUDE_PROJECT_DIR` when `projectDir` is omitted.
 - Produces: `hooks.SessionStart[0].hooks[0]` in `hooks/codex-hooks.json`, a Codex command registration for `doctrine-gate.sh`. No new function or script interface.
 
-- [ ] **Step 1: Add a failing manifest registration test**
+- [x] **Step 1: Add a failing manifest registration test**
 
 Append this test beside `Codex hooks run both gates before explicit skill prompts` in `scripts/lib/__tests__/plugin.test.mjs`:
 
@@ -69,12 +71,12 @@ test('Codex hooks inject doctrine at session start', () => {
 });
 ```
 
-- [ ] **Step 2: Confirm the new registration test fails for the missing group**
+- [x] **Step 2: Confirm the new registration test fails for the missing group**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs`
 Expected: FAIL in `Codex hooks inject doctrine at session start` because `config.hooks.SessionStart` is undefined.
 
-- [ ] **Step 3: Add Codex payload behavior tests**
+- [x] **Step 3: Add Codex payload behavior tests**
 
 Add these tests beside the existing `doctrine-gate` tests in `scripts/lib/__tests__/hooks.test.mjs`. They deliberately omit `runHook`'s `projectDir` argument so the gate must use payload `.cwd`. Keep the existing Claude-shaped tests.
 
@@ -128,12 +130,12 @@ test('doctrine-gate stays silent for Codex outside loomwork', () => {
 });
 ```
 
-- [ ] **Step 4: Run the payload tests**
+- [x] **Step 4: Run the payload tests**
 
 Run: `node --test scripts/lib/__tests__/hooks.test.mjs`
 Expected: PASS. These tests pin the gate's existing Codex-compatible behavior; investigate a failure before changing the script because the spec requires it to remain unmodified.
 
-- [ ] **Step 5: Register the gate in `hooks/codex-hooks.json`**
+- [x] **Step 5: Register the gate in `hooks/codex-hooks.json`**
 
 Update `description` to `Loomwork doctrine at Codex session start and strategy and close-out gates for explicit skill invocations.` Keep the current `UserPromptSubmit` group exactly as it is. Add this sibling inside `hooks`:
 
@@ -151,21 +153,21 @@ Update `description` to `Loomwork doctrine at Codex session start and strategy a
 ]
 ```
 
-- [ ] **Step 6: Run the manifest and payload tests**
+- [x] **Step 6: Run the manifest and payload tests**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs scripts/lib/__tests__/hooks.test.mjs`
 Expected: PASS, including the newly failing registration test and all Codex payload cases.
 
-- [ ] **Step 7: Update live documentation**
+- [x] **Step 7: Update live documentation**
 
 In `references/PLAYBOOK.md`, change the Doctrine row's Codex cell to `` `hooks/codex-hooks.json` → `SessionStart`; opted-in repos only; current doctrine from installed plugin ``. Change the nearby Codex paragraph to distinguish `UserPromptSubmit` gates, which observe explicit `$superpowers:...` prompts, from the `SessionStart` doctrine gate, which runs once the installed hook is trusted. In `AGENTS.md`'s “Hooks: three runtimes, one behavior” paragraph, state that Codex registers both `UserPromptSubmit` and `SessionStart`, and limit the explicit-prompt restriction to the former.
 
-- [ ] **Step 8: Verify all tests and the diff**
+- [x] **Step 8: Verify all tests and the diff**
 
 Run: `node --test scripts/lib/__tests__/*.test.mjs`
 Expected: PASS. Run: `git diff --check` and `git diff -- hooks/codex-hooks.json scripts/lib/__tests__/plugin.test.mjs scripts/lib/__tests__/hooks.test.mjs references/PLAYBOOK.md AGENTS.md`. Expected: no whitespace errors; only the five listed files change, and neither `doctrine-gate.sh` nor the template changes.
 
-- [ ] **Step 9: Commit the implementation**
+- [x] **Step 9: Commit the implementation**
 
 ```bash
 git add hooks/codex-hooks.json scripts/lib/__tests__/plugin.test.mjs scripts/lib/__tests__/hooks.test.mjs references/PLAYBOOK.md AGENTS.md

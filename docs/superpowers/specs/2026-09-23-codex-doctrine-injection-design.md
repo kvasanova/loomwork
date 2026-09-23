@@ -1,8 +1,8 @@
 ---
 issue: 20
-status: approved
-implemented_in:
-verified:
+status: implemented
+implemented_in: "PR #23"
+verified: 2026-09-23
 ---
 
 # Deliver loomwork doctrine to Codex sessions via `SessionStart`
@@ -107,10 +107,10 @@ This is a pure registration change plus tests. No behavior in the script is Clau
 ## Acceptance
 
 - [x] Probe result (works/fails, codex-cli version) recorded in this document: **works**, codex-cli 0.155.1, confirmed via `codex debug prompt-input` and `codex exec --dangerously-bypass-hook-trust` against a throwaway `CODEX_HOME`.
-- [ ] A Codex session in a loomwork repo (`.loomwork.json` or the configured `specsDir` present) receives the current doctrine from the installed plugin via `SessionStart` `additionalContext`, with no in-repo block.
-- [ ] A Codex session outside a loomwork repo receives no doctrine injection from `doctrine-gate.sh`.
-- [ ] `doctrine-gate.sh` correctly resolves the repo root from a Codex `SessionStart` payload's `.cwd` alone (no `CLAUDE_PROJECT_DIR`), including from a nested subdirectory.
-- [ ] `hooks.test.mjs` covers the Codex `SessionStart` payload shape for `doctrine-gate.sh`.
-- [ ] `plugin.test.mjs` asserts `hooks/codex-hooks.json` registers the `SessionStart` group correctly.
-- [ ] `references/PLAYBOOK.md` and `AGENTS.md` no longer describe Codex doctrine delivery as unimplemented.
-- [ ] `node --test scripts/lib/__tests__/*.test.mjs` passes.
+- [x] A Codex session in a loomwork repo (`.loomwork.json` or the configured `specsDir` present) receives the current doctrine from the installed plugin via `SessionStart` `additionalContext`, with no in-repo block.
+- [x] A Codex session outside a loomwork repo receives no doctrine injection from `doctrine-gate.sh`.
+- [x] `doctrine-gate.sh` correctly resolves the repo root from a Codex `SessionStart` payload's `.cwd` alone (no `CLAUDE_PROJECT_DIR`), including from a nested subdirectory.
+- [x] `hooks.test.mjs` covers the Codex `SessionStart` payload shape for `doctrine-gate.sh`.
+- [x] `plugin.test.mjs` asserts `hooks/codex-hooks.json` registers the `SessionStart` group correctly.
+- [x] `references/PLAYBOOK.md` and `AGENTS.md` no longer describe Codex doctrine delivery as unimplemented.
+- [x] `node --test scripts/lib/__tests__/*.test.mjs` passes.
