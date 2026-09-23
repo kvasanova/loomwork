@@ -209,7 +209,7 @@ harnesses ship in-repo — edit the matching config when changing behavior.
 | --- | --- | --- | --- |
 | **STRATEGY.md** | `brainstorming`, `writing-plans` | loomwork plugin `hooks/hooks.json` → `PostToolUse` + `Skill` matcher (ships with the plugin) | `hooks/codex-hooks.json` → `UserPromptSubmit`; explicit `$superpowers:brainstorming` and `$superpowers:writing-plans` prompts only |
 | **Close-out** | `finishing-a-development-branch` | loomwork plugin `hooks/hooks.json` → `PostToolUse` + `Skill` matcher (ships with the plugin) | `hooks/codex-hooks.json` → `UserPromptSubmit`; explicit `$superpowers:finishing-a-development-branch` prompts only |
-| **Doctrine** | every session (and after compaction) | loomwork plugin `hooks/hooks.json` → `SessionStart` (`startup\|clear\|compact`), opted-in repos only | not yet implemented — tracked in issue #20 |
+| **Doctrine** | every session (and after compaction) | loomwork plugin `hooks/hooks.json` → `SessionStart` (`startup\|clear\|compact`), opted-in repos only | `hooks/codex-hooks.json` → `SessionStart`; opted-in repos only; current doctrine from installed plugin |
 
 **Strategy gate, both harnesses:** with a strategy file present, inject its
 content and tell the agent not to open the file. With no strategy file, inject a
@@ -223,9 +223,10 @@ output, instead of claiming the whole strategy is inline.
 
 **Claude Code:** the gates ship with the plugin — no repo-local hook config needed.
 
-**Codex:** the gates ship with the plugin and observe explicit
-`$superpowers:...` prompts only; implicit skill selection does not produce a
-`UserPromptSubmit` signal the gates can identify.
+**Codex:** the gates ship with the plugin. The `UserPromptSubmit` strategy and
+close-out gates observe explicit `$superpowers:...` prompts only; implicit skill
+selection does not produce a signal those gates can identify. The `SessionStart`
+doctrine gate injects the current template once the installed hook is trusted.
 
 ## Where artifacts live
 

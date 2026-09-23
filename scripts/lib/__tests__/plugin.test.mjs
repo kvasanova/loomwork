@@ -43,6 +43,18 @@ test('Codex hooks run both gates before explicit skill prompts', () => {
   }
 });
 
+test('Codex hooks inject doctrine at session start', () => {
+  const config = readJson('hooks/codex-hooks.json');
+  const groups = config.hooks.SessionStart;
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].matcher, undefined);
+  assert.deepEqual(groups[0].hooks, [{
+    type: 'command',
+    command: 'bash "${PLUGIN_ROOT}/hooks/doctrine-gate.sh"',
+    additionalContextLimit: 2500,
+  }]);
+});
+
 test('init skill exposes a host-neutral skill-relative entry point', () => {
   const skill = fs.readFileSync(path.join(ROOT, 'skills/init/SKILL.md'), 'utf8');
   assert.match(skill, /^---\nname: init\n/m);

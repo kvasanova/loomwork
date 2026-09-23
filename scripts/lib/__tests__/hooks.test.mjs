@@ -208,6 +208,54 @@ test('doctrine-gate injects the doctrine block for a repo with docs/superpowers/
   assert.match(out.hookSpecificOutput.additionalContext, /Spec-Driven Development \(loomwork\)/);
 });
 
+test('doctrine-gate injects the live template for Codex with config opt-in', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-codex-doctrine-')));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ specsDir: 'docs/specs' }));
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root));
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout).hookSpecificOutput;
+  assert.equal(output.hookEventName, 'SessionStart');
+  assert.equal(output.additionalContext, fs.readFileSync(path.join(HOOKS_DIR, '../templates/claude-md-block.md'), 'utf8'));
+  assert.equal(fs.existsSync(path.join(root, 'AGENTS.md')), false);
+});
+
+test('doctrine-gate injects for Codex with the default specs directory', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-codex-doctrine-')));
+  fs.mkdirSync(path.join(root, '.git'));
+  fs.mkdirSync(path.join(root, 'docs/superpowers/specs'), { recursive: true });
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root));
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /Spec-Driven Development \(loomwork\)/);
+});
+
+test('doctrine-gate walks up from Codex cwd through a worktree .git file', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-codex-doctrine-')));
+  fs.writeFileSync(path.join(root, '.git'), 'gitdir: /tmp/unused\n');
+  fs.mkdirSync(path.join(root, 'docs/superpowers/specs'), { recursive: true });
+  const nested = path.join(root, 'a/b');
+  fs.mkdirSync(nested, { recursive: true });
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(nested));
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /Spec-Driven Development \(loomwork\)/);
+});
+
+test('doctrine-gate walks up from Codex cwd to custom specs config', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-codex-doctrine-')));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ specsDir: 'docs/specs' }));
+  const nested = path.join(root, 'a/b');
+  fs.mkdirSync(nested, { recursive: true });
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(nested));
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /Spec-Driven Development \(loomwork\)/);
+});
+
+test('doctrine-gate stays silent for Codex outside loomwork', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-codex-outside-')));
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '');
+});
+
 test('doctrine-gate injects the doctrine block for a repo with .loomwork.json', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-'));
   fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ specsDir: 'docs/specs' }));
