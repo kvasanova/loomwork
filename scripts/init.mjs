@@ -41,7 +41,7 @@ export function removeLegacyDoctrine(content) {
   }
   if (heading === -1) return unsafe;
   let stop = heading + 1;
-  while (stop < end && !/^#{1,2} /.test(lines[stop])) stop++;
+  while (stop < end && !/^#{1,6} /.test(lines[stop])) stop++;
 
   const out = [];
   let gap = false;
@@ -76,7 +76,9 @@ const isLoomworkEntry = (entry) =>
   entry.command.includes(CURSOR_LOOMWORK_MARKER);
 
 const removeDirIfEmpty = (dir) => {
-  if (fs.existsSync(dir) && fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
+  if (fs.existsSync(dir) && fs.statSync(dir).isDirectory() && fs.readdirSync(dir).length === 0) {
+    fs.rmdirSync(dir);
+  }
 };
 
 // Older versions wrote loomwork entries into .cursor/hooks.json plus two
@@ -132,8 +134,10 @@ export function removeCursorSetup(repoRoot) {
       actions.push(`removed .cursor/hooks/${script}`);
     }
   }
-  removeDirIfEmpty(hooksDir);
-  removeDirIfEmpty(cursorDir);
+  if (actions.length > 0) {
+    removeDirIfEmpty(hooksDir);
+    removeDirIfEmpty(cursorDir);
+  }
   return actions;
 }
 
@@ -252,12 +256,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === SCRIPT_PATH) {
       process.exit(ok ? 0 : 1);
     }
     const actions = initRepo(repoRoot);
-    if (actions.length === 0) {
-      console.log('loomwork: already initialized — no changes.');
-    } else {
-      console.log(`loomwork: initialized ${repoRoot}`);
-      for (const a of actions) console.log(`  - ${a}`);
-    }
+    const changed = actions.some((a) => a.startsWith('created ') || a.startsWith('removed '));
+    if (changed) console.log(`loomwork: initialized ${repoRoot}`);
+    else console.log('loomwork: already initialized — no changes.');
+    for (const a of actions) console.log(`  - ${a}`);
   } catch (error) {
     console.error(error.message);
     process.exit(2);

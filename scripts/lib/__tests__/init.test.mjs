@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import {
   initRepo,
+  removeCursorSetup,
   removeLegacyDoctrine,
   classifyStrategyFile,
   removeStrategy,
@@ -169,6 +170,11 @@ test('keeps a repo section that follows the doctrine inside the block', () => {
   assert.equal(removeLegacyDoctrine(input).content, '# A\n\n## Mine\n\nm\n');
 });
 
+test('keeps a deeper repo heading that follows the doctrine inside the block', () => {
+  const input = `${BEGIN}\n## Spec-Driven Development (loomwork)\n- x\n### My own notes\nkeep me\n${END}\n`;
+  assert.equal(removeLegacyDoctrine(input).content, '### My own notes\nkeep me\n');
+});
+
 test('collapses blank lines where a mid-file block is removed', () => {
   const input = `# A\n\n${BEGIN}\n${DOCTRINE}${END}\n\n## Later\n`;
   assert.equal(removeLegacyDoctrine(input).content, '# A\n\n## Later\n');
@@ -306,6 +312,27 @@ test('leaves hooks.json untouched when it has no loomwork entries', () => {
   assert.equal(fs.readFileSync(cursorPath(root, 'hooks.json'), 'utf8'), text);
 });
 
+test('keeps an empty .cursor/ that loomwork never touched', () => {
+  const root = freshRepo();
+  fs.mkdirSync(path.join(root, '.cursor'));
+  assert.deepEqual(removeCursorSetup(root), []);
+  assert.ok(fs.existsSync(path.join(root, '.cursor')));
+});
+
+for (const [name, rel] of [['.cursor/hooks', 'hooks'], ['.cursor', null]]) {
+  test(`does not crash when ${name} is a regular file`, () => {
+    const root = freshRepo();
+    if (rel) {
+      fs.mkdirSync(path.join(root, '.cursor'));
+      fs.writeFileSync(path.join(root, '.cursor', rel), 'x\n');
+    } else {
+      fs.writeFileSync(path.join(root, '.cursor'), 'x\n');
+    }
+    assert.doesNotThrow(() => initRepo(root));
+    assert.ok(fs.existsSync(path.join(root, '.cursor')));
+  });
+}
+
 test('reports nothing on a second run', () => {
   const root = freshRepo();
   writeCursor(root, { version: 1, hooks: loomworkHooks() });
@@ -405,6 +432,23 @@ function runCli(root, ...args) {
     encoding: 'utf8',
   });
 }
+
+test('CLI says already initialized when every action is only a report', () => {
+  const root = gitRepo({ 'STRATEGY.md': 'x\n' });
+  initRepo(root, PLUGIN_ROOT);
+  const result = runCli(root);
+  assert.equal(result.status, 0);
+  assert.ok(result.stdout.startsWith('loomwork: already initialized — no changes.'));
+  assert.ok(!result.stdout.includes('loomwork: initialized'));
+  assert.ok(result.stdout.includes(STRATEGY_READY));
+});
+
+test('CLI says initialized when a run changes something', () => {
+  const root = gitRepo({ 'STRATEGY.md': 'x\n' });
+  const result = runCli(root);
+  assert.ok(result.stdout.startsWith('loomwork: initialized '));
+  assert.ok(result.stdout.includes('created docs/superpowers/specs/'));
+});
 
 test('CLI --remove-strategy exits 1 with the reason on a modified file', () => {
   const root = blockedRepos.modified[0]();

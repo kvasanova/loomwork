@@ -12,7 +12,7 @@ This repository is a portable Agent Plugins package that retains Claude-specific
 
 ## Path variables
 
-- `${CLAUDE_PLUGIN_ROOT}` — the plugin's own root. Claude's hook registration and `/loomwork:init` command use it; portable skills resolve their CLIs relative to the installed `SKILL.md` instead. Never hardcode an installation-specific path to `scripts/` in skill or command Markdown.
+- `${CLAUDE_PLUGIN_ROOT}` — the plugin's own root. Claude's hook registration uses it; portable skills resolve their CLIs relative to the installed `SKILL.md` instead. Never hardcode an installation-specific path to `scripts/` in skill Markdown.
 - `CLAUDE_PROJECT_DIR` — the consumer repository root. `resolveRepoRoot()` prefers it, then walks up for `.git` or `.loomwork.json`. Set it to a disposable directory when testing `init.mjs`, and to a temporary directory in hook tests.
 - The shared gates prefer `CLAUDE_PROJECT_DIR`, then the hook payload's `.cwd`. The gates exit silently when neither resolves, so they never nudge from an unrelated directory. Keep that guard.
 

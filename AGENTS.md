@@ -8,7 +8,7 @@ Loomwork is an SDD lifecycle layer on top of superpowers. `scripts/` contains th
 
 ## This is a plugin, not an application
 
-There is no `package.json`, no dependencies, and no build step. The repository ships CLIs, Bash hook gates, and instructions-only Markdown (skills and commands).
+There is no `package.json`, no dependencies, and no build step. The repository ships CLIs, Bash hook gates, and instructions-only Markdown (skills).
 
 The **consumer repository** — some other repository that installs loomwork — is the runtime target of everything here. Keep the two separate: `repoRoot` in the code always means the consumer repository, resolved by `resolveRepoRoot()`. The plugin's own root is a separate argument (`pluginRoot`).
 

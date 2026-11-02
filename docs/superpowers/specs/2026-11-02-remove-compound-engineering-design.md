@@ -86,7 +86,7 @@ A default run does the following, and every step is idempotent:
 
 Today's init deletes everything between `<!-- loomwork:begin -->` and `<!-- loomwork:end -->`. That is unsafe: timestranding's markers span lines 697–785 of its `AGENTS.md` and also enclose its own `## Deployment` and `## Auth` sections, about 70 lines of real guidance. Weavereads and linkedin-profile hold only doctrine between theirs.
 
-The new rule, for each file: when both markers exist on their own lines with the `## Spec-Driven Development (loomwork)` heading between them, remove that section, up to the next `#` or `##` heading or the end marker, and the two marker lines. Everything else between the markers stays, in order. If only one marker exists or the heading is missing, change nothing and report that the file has a loomwork block init could not safely remove. That heading appears in every version of the doctrine template.
+The new rule, for each file: when both markers exist on their own lines with the `## Spec-Driven Development (loomwork)` heading between them, remove that section, up to the next heading of any level or the end marker, and the two marker lines. Everything else between the markers stays, in order. If only one marker exists or the heading is missing, change nothing and report that the file has a loomwork block init could not safely remove. That heading appears in every version of the doctrine template.
 
 A marker mentioned inline in prose is not a block. Keep the line-anchored and CRLF-tolerant matching of today's `legacyBlockRe`.
 

@@ -79,6 +79,8 @@ not migrate. If it says nothing about `STRATEGY.md`, skip this section.
    can see whether it holds the moved content. On a no, write nothing, delete
    nothing, and report that `STRATEGY.md` was kept; a later init asks again.
 5. **On a yes, write the section to the target file, then remove the file.**
+   When step 2 skipped the move because the target already has a
+   `## Product context` section, write nothing; only run the flag below.
    Resolve `../../scripts/init.mjs` from this `SKILL.md` exactly as in
    section 2 and run it from the consumer repository with the flag:
 
