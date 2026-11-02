@@ -7,10 +7,9 @@ description: Run the SDD drift linter — flags stale spec status, missing plan 
 
 **Announce:** "Using loomwork:audit to scan spec/plan drift."
 
-**Preflight:** verify the superpowers and compound-engineering plugins are
-installed (their skills appear in your available-skills list). If either is
-missing, stop and point the user at the install commands in `/loomwork:init`
-Step 1.
+**Preflight:** verify the superpowers plugin is installed (its skills appear
+in your available-skills list). If it is missing, stop and point the user at
+`/loomwork:init` Step 1.
 
 **When:** Manually or periodically (e.g. monthly). When a shipped feature
 still shows `draft` or unticked plan boxes. **Not** a CI gate.

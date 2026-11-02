@@ -78,8 +78,8 @@ layout → style → testing → commit and PR conventions.
 Preserve any existing marker-guarded block (`<!-- loomwork:begin -->` …
 `<!-- loomwork:end -->`) verbatim, including the markers. When such a block
 lives in a file that is becoming a thin host file, move the whole block —
-markers included — into `AGENTS.md` rather than copying it, so that
-`scripts/init.mjs` keeps finding exactly one block to update.
+markers included — into `AGENTS.md` rather than copying it, so
+`scripts/init.mjs` can still find and remove it.
 
 Write prose that states rules and gives the reason behind a rule when the
 reason is what stops someone from reverting it. Avoid bullet lists of bare

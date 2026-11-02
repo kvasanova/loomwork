@@ -7,15 +7,13 @@ description: Use during finishing-a-development-branch (after tests pass, before
 
 **Announce:** "Using loomwork:close-out to freeze the plan and update the spec."
 
-**Preflight:** verify the superpowers and compound-engineering plugins are
-installed (their skills appear in your available-skills list). If either is
-missing, stop and point the user at the install commands in `/loomwork:init`
-Step 1.
+**Preflight:** verify the superpowers plugin is installed (its skills appear
+in your available-skills list). If it is missing, stop and point the user at
+`/loomwork:init` Step 1.
 
-**Paths:** this skill uses the defaults `docs/superpowers/plans`,
-`docs/superpowers/specs`, and `STRATEGY.md`. If the repo has a
-`.loomwork.json`, substitute its `plansDir`/`specsDir`/`strategyFile` values
-throughout.
+**Paths:** this skill uses the defaults `docs/superpowers/plans` and
+`docs/superpowers/specs`. If the repo has a `.loomwork.json`, substitute its
+`plansDir`/`specsDir` values throughout.
 
 **When:** Feature branch has plan and/or spec artifacts; tests pass;
 integration not yet done. Skip if neither artifact exists. Skip for
@@ -108,34 +106,6 @@ For each shipped plan:
    If the spec has no acceptance section yet, append `## Acceptance` at EOF
    with `- [x]` items derived from Goals/Verification, then set `verified:`.
 
-## Step 3b: Did this ship change the strategy?
-
-Skip when the branch had **no** paired spec, or when the work is plan-only
-(config/doc rollout).
-
-**`STRATEGY.md` belongs to `compound-engineering:ce-strategy`.** This step
-writes nothing to it. It asks one question and, on a yes, hands off.
-
-Ask: does the shipped capability
-
-- introduce an externally visible milestone (a launch), or
-- change what an investment area covers, or
-- retire a direction the team keeps revisiting, or
-- shift the target problem or approach?
-
-**Yes** → run `compound-engineering:ce-strategy` targeted at that section, on
-the feature branch, so the update rides the same PR. That skill decides what
-the file says and whether `last_updated` moves.
-
-**No** → touch nothing. Most ships land here. Ship history lives in spec
-frontmatter (`implemented_in`, `verified`), plan DONE banners, and git — not in
-the strategy file.
-
-Never append to `## Milestones`, never create that section, never bump
-`last_updated` yourself, and never edit `## Tracks` or `## Not working on` from
-this step. `ce-strategy` keeps those sections optional and interview-gated; a
-per-ship write turns the roadmap anchor into a changelog and masks staleness.
-
 ## Step 4: Verify
 
 ```bash
@@ -148,16 +118,9 @@ grep '^status:' docs/superpowers/specs/<spec>.md      # implemented
 
 ```bash
 git add docs/superpowers/plans/ docs/superpowers/specs/
-# Step 3b ran ce-strategy? stage its edit too:
-[ -f STRATEGY.md ] && git add STRATEGY.md
 git commit -m "docs(sdd): close out plan/spec for PR #N (#issue)"
 git push   # Option 2: updates open PR before merge; Option 1: push if remote branch exists
 ```
-
-`STRATEGY.md` is staged only when it exists and a `ce-strategy` run in Step 3b
-modified it. Close-out itself writes nothing to it. `git add` on a bare path
-that matches no tracked file is a fatal error, not a no-op — that's why the
-guard checks existence first instead of listing `STRATEGY.md` directly.
 
 Include the issue number when known.
 
