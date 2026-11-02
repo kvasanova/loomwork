@@ -200,3 +200,109 @@ test('initRepo leaves docs/solutions content byte-identical', () => {
   initRepo(root);
   assert.equal(fs.readFileSync(path.join(root, 'docs/solutions/a.md'), 'utf8'), 'keep\n');
 });
+
+const STRATEGY_SCRIPT = 'loomwork-strategy-gate.sh';
+const CLOSE_OUT_SCRIPT = 'loomwork-close-out-gate.sh';
+const MALFORMED = '.cursor/hooks.json is malformed — loomwork Cursor setup left in place';
+
+function loomworkHooks() {
+  return {
+    sessionStart: [{ command: `.cursor/hooks/${STRATEGY_SCRIPT}` }],
+    postToolUse: [{ command: `bash .cursor/hooks/${CLOSE_OUT_SCRIPT}` }],
+  };
+}
+
+// Writes both loomwork scripts and, unless hooksJson is null, .cursor/hooks.json.
+function writeCursor(root, hooksJson) {
+  const hooksDir = path.join(root, '.cursor/hooks');
+  fs.mkdirSync(hooksDir, { recursive: true });
+  fs.writeFileSync(path.join(hooksDir, STRATEGY_SCRIPT), '#!/bin/bash\n');
+  fs.writeFileSync(path.join(hooksDir, CLOSE_OUT_SCRIPT), '#!/bin/bash\n');
+  if (hooksJson !== null) {
+    const text = typeof hooksJson === 'string' ? hooksJson : JSON.stringify(hooksJson, null, 2) + '\n';
+    fs.writeFileSync(path.join(root, '.cursor/hooks.json'), text);
+  }
+}
+
+const cursorPath = (root, rel) => path.join(root, '.cursor', rel);
+
+test('removes the whole setup when only loomwork entries exist', () => {
+  const root = freshRepo();
+  writeCursor(root, { version: 1, hooks: loomworkHooks() });
+  const actions = initRepo(root);
+  assert.ok(!fs.existsSync(path.join(root, '.cursor')));
+  assert.ok(actions.includes('removed .cursor/hooks.json'));
+  assert.ok(actions.includes(`removed .cursor/hooks/${STRATEGY_SCRIPT}`));
+  assert.ok(actions.includes(`removed .cursor/hooks/${CLOSE_OUT_SCRIPT}`));
+});
+
+test('keeps other hook entries', () => {
+  const root = freshRepo();
+  const hooks = loomworkHooks();
+  hooks.postToolUse.push({ command: 'other.sh' });
+  writeCursor(root, { version: 1, hooks });
+  const actions = initRepo(root);
+  const after = JSON.parse(fs.readFileSync(cursorPath(root, 'hooks.json'), 'utf8'));
+  assert.deepEqual(after, { version: 1, hooks: { postToolUse: [{ command: 'other.sh' }] } });
+  assert.ok(actions.includes('removed loomwork entries from .cursor/hooks.json'));
+  assert.ok(!fs.existsSync(cursorPath(root, `hooks/${STRATEGY_SCRIPT}`)));
+  assert.ok(!fs.existsSync(cursorPath(root, `hooks/${CLOSE_OUT_SCRIPT}`)));
+});
+
+test('keeps hooks.json with other top-level keys', () => {
+  const root = freshRepo();
+  writeCursor(root, { version: 1, extra: true, hooks: loomworkHooks() });
+  initRepo(root);
+  const after = JSON.parse(fs.readFileSync(cursorPath(root, 'hooks.json'), 'utf8'));
+  assert.deepEqual(after, { version: 1, extra: true, hooks: {} });
+});
+
+test('keeps other .cursor files', () => {
+  const root = freshRepo();
+  writeCursor(root, { version: 1, hooks: loomworkHooks() });
+  fs.writeFileSync(cursorPath(root, 'settings.json'), '{}\n');
+  fs.writeFileSync(cursorPath(root, 'hooks/mine.sh'), 'mine\n');
+  initRepo(root);
+  assert.ok(fs.existsSync(cursorPath(root, 'settings.json')));
+  assert.ok(fs.existsSync(cursorPath(root, 'hooks/mine.sh')));
+  assert.ok(!fs.existsSync(cursorPath(root, 'hooks.json')));
+});
+
+test('removes scripts when hooks.json is absent', () => {
+  const root = freshRepo();
+  writeCursor(root, null);
+  initRepo(root);
+  assert.ok(!fs.existsSync(path.join(root, '.cursor')));
+});
+
+for (const [name, text] of [
+  ['invalid JSON', '{ not json'],
+  ['a top-level array', '[]'],
+  ['a non-object hooks value', '{"hooks": []}'],
+]) {
+  test(`changes nothing when hooks.json is malformed (${name})`, () => {
+    const root = freshRepo();
+    writeCursor(root, text);
+    const actions = initRepo(root);
+    assert.equal(fs.readFileSync(cursorPath(root, 'hooks.json'), 'utf8'), text);
+    assert.ok(fs.existsSync(cursorPath(root, `hooks/${STRATEGY_SCRIPT}`)));
+    assert.ok(fs.existsSync(cursorPath(root, `hooks/${CLOSE_OUT_SCRIPT}`)));
+    assert.ok(actions.includes(MALFORMED));
+  });
+}
+
+test('leaves hooks.json untouched when it has no loomwork entries', () => {
+  const root = freshRepo();
+  const text = '{"version":1,"hooks":{"stop":[{"command":"other.sh"}]}}';
+  writeCursor(root, text);
+  initRepo(root);
+  assert.equal(fs.readFileSync(cursorPath(root, 'hooks.json'), 'utf8'), text);
+});
+
+test('reports nothing on a second run', () => {
+  const root = freshRepo();
+  writeCursor(root, { version: 1, hooks: loomworkHooks() });
+  initRepo(root);
+  const second = initRepo(root);
+  assert.ok(!second.some((a) => a.includes('.cursor')));
+});

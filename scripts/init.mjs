@@ -62,6 +62,80 @@ export function removeLegacyDoctrine(content) {
   return { content: out.join(''), status: 'removed' };
 }
 
+const CURSOR_LOOMWORK_MARKER = '.cursor/hooks/loomwork-';
+const CURSOR_LOOMWORK_SCRIPTS = ['loomwork-strategy-gate.sh', 'loomwork-close-out-gate.sh'];
+const CURSOR_MALFORMED = '.cursor/hooks.json is malformed — loomwork Cursor setup left in place';
+
+const isPlainObject = (value) =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const isLoomworkEntry = (entry) =>
+  isPlainObject(entry) &&
+  typeof entry.command === 'string' &&
+  entry.command.includes(CURSOR_LOOMWORK_MARKER);
+
+const removeDirIfEmpty = (dir) => {
+  if (fs.existsSync(dir) && fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
+};
+
+// Older versions wrote loomwork entries into .cursor/hooks.json plus two
+// scripts under .cursor/hooks/. Removes only those, leaving other Cursor
+// config alone. A malformed hooks.json changes nothing, so the scripts are not
+// removed while a config may still point at them.
+export function removeCursorSetup(repoRoot) {
+  const actions = [];
+  const cursorDir = path.join(repoRoot, '.cursor');
+  const hooksDir = path.join(cursorDir, 'hooks');
+  const hooksJsonPath = path.join(cursorDir, 'hooks.json');
+
+  if (fs.existsSync(hooksJsonPath)) {
+    let parsed;
+    try {
+      parsed = JSON.parse(fs.readFileSync(hooksJsonPath, 'utf8'));
+    } catch {
+      return [CURSOR_MALFORMED];
+    }
+    if (
+      !isPlainObject(parsed) ||
+      ('hooks' in parsed && !isPlainObject(parsed.hooks)) ||
+      Object.values(parsed.hooks || {}).some((entries) => !Array.isArray(entries))
+    ) {
+      return [CURSOR_MALFORMED];
+    }
+
+    let changed = false;
+    const hooks = parsed.hooks || {};
+    for (const [event, entries] of Object.entries(hooks)) {
+      const kept = entries.filter((entry) => !isLoomworkEntry(entry));
+      if (kept.length === entries.length) continue;
+      changed = true;
+      if (kept.length === 0) delete hooks[event];
+      else hooks[event] = kept;
+    }
+    if (changed) {
+      const onlyOwnKeys = Object.keys(parsed).every((key) => key === 'version' || key === 'hooks');
+      if (Object.keys(hooks).length === 0 && onlyOwnKeys) {
+        fs.rmSync(hooksJsonPath);
+        actions.push('removed .cursor/hooks.json');
+      } else {
+        fs.writeFileSync(hooksJsonPath, JSON.stringify(parsed, null, 2) + '\n');
+        actions.push('removed loomwork entries from .cursor/hooks.json');
+      }
+    }
+  }
+
+  for (const script of CURSOR_LOOMWORK_SCRIPTS) {
+    const scriptPath = path.join(hooksDir, script);
+    if (fs.existsSync(scriptPath)) {
+      fs.rmSync(scriptPath);
+      actions.push(`removed .cursor/hooks/${script}`);
+    }
+  }
+  removeDirIfEmpty(hooksDir);
+  removeDirIfEmpty(cursorDir);
+  return actions;
+}
+
 export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
   const config = loadConfig(repoRoot);
   const actions = [];
@@ -89,6 +163,8 @@ export function initRepo(repoRoot, pluginRoot = DEFAULT_PLUGIN_ROOT) {
       actions.push(`${filename} has a loomwork block init could not safely remove`);
     }
   }
+
+  actions.push(...removeCursorSetup(repoRoot));
 
   return actions;
 }
