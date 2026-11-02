@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared by strategy-gate.sh, close-out-gate.sh, and doctrine-gate.sh.
+# Shared by close-out-gate.sh and doctrine-gate.sh.
 # Walk up from $1 to the nearest ancestor holding a repository marker. Falls
 # back to the starting directory so an uninitialized repo still gets nudged.
 resolve_repo_root() {

@@ -4,7 +4,6 @@ import path from 'node:path';
 export const DEFAULT_CONFIG = {
   specsDir: 'docs/superpowers/specs',
   plansDir: 'docs/superpowers/plans',
-  strategyFile: 'STRATEGY.md',
 };
 
 export function loadConfig(repoRoot) {

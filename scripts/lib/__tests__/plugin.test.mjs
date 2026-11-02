@@ -25,7 +25,7 @@ test('portable and Claude manifests keep shared identity aligned', () => {
   }
 });
 
-test('Codex hooks run both gates before explicit skill prompts', () => {
+test('Codex hooks run the close-out gate before explicit skill prompts', () => {
   const config = readJson('hooks/codex-hooks.json');
   const groups = config.hooks.UserPromptSubmit;
   assert.equal(groups.length, 1);
@@ -33,7 +33,6 @@ test('Codex hooks run both gates before explicit skill prompts', () => {
   assert.deepEqual(
     groups[0].hooks.map((hook) => hook.command),
     [
-      'bash "${PLUGIN_ROOT}/hooks/strategy-gate.sh"',
       'bash "${PLUGIN_ROOT}/hooks/close-out-gate.sh"',
     ],
   );
@@ -94,7 +93,7 @@ test('split-agents-md skill preserves and consolidates the marker-guarded block'
   assert.match(skill, /<!-- loomwork:end -->/);
   assert.match(skill, /verbatim, including the markers/);
   assert.match(skill, /move the whole block/);
-  assert.match(skill, /exactly one block to update/);
+  assert.match(skill, /`scripts\/init\.mjs` can still find and remove it/);
   assert.match(skill, /Confirm exactly one marker-guarded block survives, in `AGENTS\.md`/);
 });
 
@@ -114,4 +113,29 @@ test('audit skill resolves its CLI relative to the installed skill', () => {
   const skill = fs.readFileSync(path.join(ROOT, 'skills/audit/SKILL.md'), 'utf8');
   assert.match(skill, /\.\.\/\.\.\/scripts\/sdd-audit\.mjs/);
   assert.doesNotMatch(skill, /PLUGIN_ROOT|CLAUDE_PLUGIN_ROOT/);
+});
+
+test('Claude hooks register only the close-out gate on Skill', () => {
+  const groups = readJson('hooks/hooks.json').hooks.PostToolUse;
+  assert.deepEqual(
+    groups[0].hooks.map((hook) => hook.command),
+    ['${CLAUDE_PLUGIN_ROOT}/hooks/close-out-gate.sh'],
+  );
+});
+
+test('no hook registration mentions strategy', () => {
+  for (const file of ['hooks/hooks.json', 'hooks/codex-hooks.json']) {
+    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, file), 'utf8'), /strategy/i);
+  }
+});
+
+test('skills require only superpowers', () => {
+  for (const name of ['audit', 'close-out']) {
+    const text = fs.readFileSync(path.join(ROOT, `skills/${name}/SKILL.md`), 'utf8');
+    assert.doesNotMatch(text, /compound-engineering|ce-strategy|STRATEGY\.md|strategyFile/);
+  }
+  const init = fs.readFileSync(path.join(ROOT, 'skills/init/SKILL.md'), 'utf8');
+  assert.doesNotMatch(init, /`compound-engineering:/);
+  assert.match(init, /--remove-strategy/);
+  assert.match(init, /ready to migrate/);
 });

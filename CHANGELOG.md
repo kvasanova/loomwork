@@ -5,6 +5,35 @@ All notable changes to loomwork are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-11-02
+
+Loomwork is now an SDD lifecycle layer on top of superpowers alone. After
+upgrading, re-run `/loomwork:init` (or `$loomwork:init` in Codex) once in each
+repo to clean up the old setup. Init never commits; review and commit its
+changes yourself.
+
+### Removed
+
+- The **compound-engineering** dependency. The audit, close-out, and init
+  skills no longer check for it.
+- The **strategy gate** (`hooks/strategy-gate.sh`) and its Claude Code and
+  Codex registrations.
+- The **`strategyFile`** key from `.loomwork.json`. Init reports a leftover key and leaves it alone.
+- The **`docs/solutions`** scaffolding. Init no longer creates the folder and
+  never touches an existing one.
+- **Close-out Step 3b**, which asked whether a ship changed the strategy.
+
+### Changed
+
+- **Init upgrades older setups.** It removes the old Cursor hooks and reports
+  on `STRATEGY.md`. The init skill moves the useful parts of `STRATEGY.md` into
+  a short `## Product context` section, then deletes the file with
+  `init.mjs --remove-strategy`. Init also reports tracked files that still name
+  the old setup.
+- **Doctrine removal keeps repo content.** Init removes only the loomwork
+  doctrine section and the markers from a legacy marker-guarded block. Any of
+  the repo's own content between the markers stays.
+
 ## [0.4.6] - 2026-09-23
 
 ### Added

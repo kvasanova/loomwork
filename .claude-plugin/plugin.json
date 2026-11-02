@@ -1,7 +1,7 @@
 {
   "name": "loomwork",
-  "description": "SDD lifecycle glue for superpowers + compound-engineering: status-frontmatter convention, drift audit, pre-merge close-out, and strategy/close-out hook gates. One loom, one status surface.",
-  "version": "0.4.6",
+  "description": "SDD lifecycle for superpowers: status-frontmatter convention, drift audit, pre-merge close-out, and a close-out hook gate. One loom, one status surface.",
+  "version": "0.5.0",
   "author": {
     "name": "Pavlo Kvas"
   },

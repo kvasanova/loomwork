@@ -26,7 +26,7 @@ esac
 # CLAUDE_PROJECT_DIR wins and is used exactly as given; a Codex payload's .cwd
 # is a session directory, so walk up from it to the repository root instead.
 # With neither, stay silent rather than reading /.loomwork.json off the
-# filesystem root. (Mirrors strategy-gate.sh.)
+# filesystem root.
 payload_root=$(echo "$input" | jq -r '.cwd // empty')
 if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
   root="$CLAUDE_PROJECT_DIR"

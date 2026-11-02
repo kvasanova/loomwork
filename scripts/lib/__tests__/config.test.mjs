@@ -20,7 +20,6 @@ test('loadConfig merges custom paths over defaults', () => {
   const config = loadConfig(root);
   assert.equal(config.specsDir, 'docs/specs');
   assert.equal(config.plansDir, DEFAULT_CONFIG.plansDir);
-  assert.equal(config.strategyFile, DEFAULT_CONFIG.strategyFile);
 });
 
 test('loadConfig falls back to defaults on malformed JSON', () => {
