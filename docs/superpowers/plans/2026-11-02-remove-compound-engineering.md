@@ -1,5 +1,7 @@
 # Remove compound-engineering and strategy Implementation Plan
 
+> **Status: DONE — shipped in PR #25 (2026-11-02).** Historical record; not maintained.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make loomwork depend on superpowers alone, remove the strategy concept, and have `/loomwork:init` upgrade repos set up by older versions.
@@ -42,7 +44,7 @@
 **Interfaces:**
 - Produces: remaining gates are `close-out-gate.sh` and `doctrine-gate.sh`.
 
-- [ ] **Step 1: Update and add the tests**
+- [x] **Step 1: Update and add the tests**
 
 In `plugin.test.mjs`, rename the Codex test to `Codex hooks run the close-out gate before explicit skill prompts` and expect only `'bash "${PLUGIN_ROOT}/hooks/close-out-gate.sh"'`. Add:
 
@@ -89,21 +91,21 @@ test('doctrine-gate walks up from a nested .cwd to a plain .git directory', () =
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify the new plugin tests fail**
+- [x] **Step 2: Run the tests to verify the new plugin tests fail**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs scripts/lib/__tests__/hooks.test.mjs`
 Expected: FAIL on the registration tests; the two new hook tests pass, since they guard existing behavior.
 
-- [ ] **Step 3: Remove the gate**
+- [x] **Step 3: Remove the gate**
 
 Delete `hooks/strategy-gate.sh` and both registrations. Set the `codex-hooks.json` description to `Loomwork doctrine at Codex session start and the close-out gate for explicit skill invocations.` Remove the strategy mention from the comments in `hooks/close-out-gate.sh` and `hooks/lib/resolve-repo-root.sh`.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs scripts/lib/__tests__/hooks.test.mjs`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add hooks scripts/lib/__tests__/hooks.test.mjs scripts/lib/__tests__/plugin.test.mjs
@@ -119,7 +121,7 @@ git commit -m "feat(hooks): remove the strategy gate"
 **Interfaces:**
 - Produces: `removeLegacyDoctrine(content: string): { content: string, status: 'none' | 'removed' | 'unsafe' }`, exported from `scripts/init.mjs`. `initRepo(repoRoot)` still returns `string[]`.
 
-- [ ] **Step 1: Rewrite the tests**
+- [x] **Step 1: Rewrite the tests**
 
 In `config.test.mjs`, remove the `strategyFile` assertion. In `init.test.mjs`:
 
@@ -187,12 +189,12 @@ test('initRepo leaves docs/solutions content byte-identical', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs scripts/lib/__tests__/config.test.mjs`
 Expected: FAIL, with `removeLegacyDoctrine` not exported.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Remove `strategyFile` from `DEFAULT_CONFIG`. In `init.mjs`, remove the `docs/solutions` scaffolding and the missing-strategy report.
 
@@ -205,12 +207,12 @@ Implement `removeLegacyDoctrine` line by line, keeping each line's own ending:
 
 Report `removed legacy loomwork block from ${filename}` and `${filename} has a loomwork block init could not safely remove`.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs scripts/lib/__tests__/config.test.mjs`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/init.mjs scripts/lib/config.mjs scripts/lib/__tests__/init.test.mjs scripts/lib/__tests__/config.test.mjs
@@ -226,7 +228,7 @@ git commit -m "feat(init): stop scaffolding strategy and remove doctrine without
 **Interfaces:**
 - Produces: `removeCursorSetup(repoRoot: string): string[]`, returning actions, called from `initRepo`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Use a `writeCursor(root, hooksJson)` test helper that writes the two scripts and `.cursor/hooks.json`. Each fixture's expectations:
 
@@ -240,21 +242,21 @@ Use a `writeCursor(root, hooksJson)` test helper that writes the two scripts and
 | `changes nothing when hooks.json is malformed` | `{ not json`, `[]`, and `{"hooks": []}` as three cases | All files byte-identical, and an action `.cursor/hooks.json is malformed — loomwork Cursor setup left in place` |
 | `reports nothing on a second run` | Any removable setup | The second `initRepo` returns no `.cursor` action |
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs`
 Expected: FAIL on the new tests.
 
-- [ ] **Step 3: Implement `removeCursorSetup`**
+- [x] **Step 3: Implement `removeCursorSetup`**
 
 An entry is loomwork's when its `command` contains `.cursor/hooks/loomwork-`. Delete only `loomwork-strategy-gate.sh` and `loomwork-close-out-gate.sh`. Delete `hooks.json` only when a loomwork entry was removed, no hook entries remain, and its only keys are `version` and `hooks`. Remove `.cursor/hooks/`, then `.cursor/`, only when empty. Report one action per file removed or rewritten.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/init.mjs scripts/lib/__tests__/init.test.mjs
@@ -274,7 +276,7 @@ git commit -m "feat(init): remove the old Cursor setup on upgrade"
   - `findLeftovers(repoRoot: string, config: object): string[]`
   - The exact action `STRATEGY.md is ready to migrate`, which Task 5's skill keys on.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add a `gitRepo()` helper that runs `git init`, sets a local `user.name` and `user.email`, and commits any files given. Use a temp path containing a space. Tests:
 
@@ -315,12 +317,12 @@ Also add:
 - `findLeftovers` returns `[]` for `freshRepo()` and for a repo with no matches.
 - Second default run: identical action list, no file changes, no commits, nothing staged.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `node --test scripts/lib/__tests__/init.test.mjs`
 Expected: FAIL, with the new functions not exported.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Run git with `spawnSync` and an argument array, with `cwd: repoRoot`.
 
@@ -340,12 +342,12 @@ Run git with `spawnSync` and an argument array, with `cwd: repoRoot`.
 
 The CLI checks `process.argv.includes('--remove-strategy')`, prints the result's `message`, and exits 1 when `ok` is false. Existing errors keep exit 2.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `node --test scripts/lib/__tests__/*.test.mjs`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/init.mjs scripts/lib/__tests__/init.test.mjs
@@ -361,7 +363,7 @@ git commit -m "feat(init): classify and remove STRATEGY.md and report leftover r
 **Interfaces:**
 - Consumes: the `STRATEGY.md is ready to migrate` action and `init.mjs --remove-strategy` from Task 4.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```js
 test('skills require only superpowers', () => {
@@ -376,24 +378,24 @@ test('skills require only superpowers', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs`
 Expected: FAIL
 
-- [ ] **Step 3: Edit the skills**
+- [x] **Step 3: Edit the skills**
 
 - **`init`:** update the frontmatter description to cover upgrading repos from older loomwork setups. The preflight lists the three superpowers skills only. Replace section 3 with the spec's "`skills/init/SKILL.md` upgrade steps", including the section table, the 15-line cap, the confirmation wording, and the no path. State that it runs only on `STRATEGY.md is ready to migrate`. Resolve `--remove-strategy` through the same `SKILL.md`-relative path as the default run. Section 4 relays leftovers and states that nothing was committed.
 - **`close-out`:** preflight requires superpowers only. Delete Step 3b, the `STRATEGY.md` staging lines in Step 5, and the paragraph explaining them. The Paths note names only `plansDir` and `specsDir`. Renumber nothing else.
 - **`audit`:** preflight requires superpowers only.
 - **`split-agents-md`:** keep moving the block whole, and change the reason to "so `scripts/init.mjs` can still find and remove it".
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `node --test scripts/lib/__tests__/plugin.test.mjs`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills scripts/lib/__tests__/plugin.test.mjs
@@ -407,7 +409,7 @@ git commit -m "feat(skills): drop compound-engineering and add the init upgrade 
 - Delete: `docs/solutions/.gitkeep`
 - Test: `scripts/lib/__tests__/hooks.test.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```js
 test('doctrine names neither compound-engineering nor strategy', () => {
@@ -422,12 +424,12 @@ test('doctrine names neither compound-engineering nor strategy', () => {
 
 The `{}` config with no specs directory also covers the opt-in rule from the spec.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `node --test scripts/lib/__tests__/hooks.test.mjs`
 Expected: FAIL
 
-- [ ] **Step 3: Edit the files**
+- [x] **Step 3: Edit the files**
 
 - **`templates/claude-md-block.md`:** open with this text, keeping the frontmatter, plan-freeze, model-assignment, and audit bullets:
 
@@ -447,7 +449,7 @@ Expected: FAIL
 - **`.gitignore`:** remove the two comment lines above `.cursor/`, keeping the rule.
 - Delete `docs/solutions/.gitkeep`.
 
-- [ ] **Step 4: Run the tests and the acceptance grep**
+- [x] **Step 4: Run the tests and the acceptance grep**
 
 Run: `node --test scripts/lib/__tests__/*.test.mjs`
 Expected: PASS
@@ -455,7 +457,7 @@ Expected: PASS
 Run: `git grep -nIiE '\bce-[a-z]|compound-engineering|strategy|solutions' -- . ':!CHANGELOG.md' ':!docs/superpowers' ':!scripts/lib/__tests__' ':!scripts/init.mjs' ':!skills/init/SKILL.md'`
 Expected: no output, apart from the `--remove-strategy` line in `AGENTS.md`. Each hit in the excluded `init.mjs` and `skills/init/SKILL.md` must be upgrade code.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A templates references README.md AGENTS.md CLAUDE.md plugin.json .claude-plugin/plugin.json CHANGELOG.md .gitignore docs/solutions scripts/lib/__tests__/hooks.test.mjs
@@ -466,16 +468,16 @@ git commit -m "docs: describe loomwork on superpowers alone and release 0.5.0"
 
 No repo files change here, and the real repos are not touched. Work in clones under the session scratchpad.
 
-- [ ] **Step 1: Clone the three repos**
+- [x] **Step 1: Clone the three repos**
 
 Run `git clone -q` from `~/projects/weavereads`, `~/projects/timestranding`, and `~/projects/linkedin-profile` into a new scratchpad directory.
 
-- [ ] **Step 2: Run the default upgrade in each clone**
+- [x] **Step 2: Run the default upgrade in each clone**
 
 Run: `CLAUDE_PROJECT_DIR=<clone> node scripts/init.mjs`
 Expected: each reports `STRATEGY.md is ready to migrate`, Cursor removals, the doctrine removal, and leftovers. `git -C <clone> status --short` shows only unstaged changes.
 
-- [ ] **Step 3: Follow the skill's upgrade steps in each clone**
+- [x] **Step 3: Follow the skill's upgrade steps in each clone**
 
 Draft `## Product context` from each `STRATEGY.md` under the skill's table, write it to `AGENTS.md`, and run `init.mjs --remove-strategy`. Stand in for the owner's yes, since these are throwaway clones.
 
@@ -488,7 +490,7 @@ Expected in each clone:
 - In timestranding, `## Deployment` and `## Auth` are intact: `git diff -- AGENTS.md` shows those lines unchanged.
 - In weavereads, `.cursor/settings.json` and `.cursor/commands/` remain.
 
-- [ ] **Step 4: Rerun and confirm nothing changes**
+- [x] **Step 4: Rerun and confirm nothing changes**
 
 Run the default upgrade again in each clone and compare `git status --short` before and after.
 Expected: identical. Report the results and leftovers to the owner.

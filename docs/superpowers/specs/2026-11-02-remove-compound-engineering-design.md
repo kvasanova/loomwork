@@ -1,8 +1,8 @@
 ---
 issue:
-status: approved
-implemented_in:
-verified:
+status: implemented
+implemented_in: "PR #25"
+verified: 2026-11-02
 ---
 
 # Remove compound-engineering and strategy from loomwork
@@ -153,23 +153,23 @@ The final report relays the script's actions, including any leftovers, states th
 
 ## Acceptance
 
-- [ ] `git grep -nIiE '\bce-[a-z]|compound-engineering|strategy|solutions'` matches only upgrade code and instructions and their tests, `CHANGELOG.md`, and existing specs and plans.
-- [ ] `hooks/strategy-gate.sh` is gone, neither hook registration references it, and `brainstorming` or `writing-plans` produces no loomwork injection on Claude Code or Codex payloads.
-- [ ] The close-out and doctrine gates still pass their tests on both payload shapes, including the newline-led 192KB prompt guard, and remaining gates now cover the literal `$` requirement and the walk-up to a plain `.git` directory.
-- [ ] `audit`, `close-out`, and `init` preflights require only superpowers.
-- [ ] A fresh repo gets the specs and plans directories, no `docs/solutions/`, and no output about a missing strategy file.
-- [ ] A repo with `docs/solutions/` content has it byte-identical after init.
-- [ ] Init removes the doctrine section and markers and keeps all other content between the markers; a test covers timestranding's shape, with `## Deployment` and `## Auth` before the doctrine.
-- [ ] A marker block without the doctrine heading, or with only one marker, is left unchanged and reported. A marker mentioned inline in prose is ignored.
-- [ ] Init lists leftover references in every strategy file state, and skips the specs and plans directories, `docs/solutions/`, and `STRATEGY.md` itself.
-- [ ] The init skill shows the draft, the dropped content, and the file to be deleted, or an existing `## Product context` section next to the file, and on a no it writes and deletes nothing.
-- [ ] Init removes loomwork entries from `.cursor/hooks.json` and the two scripts, keeps non-loomwork entries and other `.cursor/` files, and deletes `hooks.json` only when nothing else remains.
-- [ ] A malformed `.cursor/hooks.json` is reported and the Cursor setup is left unchanged.
-- [ ] A default run never deletes the strategy file in any state.
-- [ ] `--remove-strategy` deletes a tracked, clean `STRATEGY.md` without staging.
-- [ ] `--remove-strategy` changes nothing and exits 1 for untracked, ignored, modified, staged, and non-git cases.
-- [ ] A `strategyFile` key is reported, and neither `.loomwork.json` nor the file it names is changed.
-- [ ] Running init twice produces no further changes the second time, including after a partial upgrade.
-- [ ] Init never creates a commit or stages a file.
-- [ ] The full test suite passes: `node --test scripts/lib/__tests__/*.test.mjs`.
-- [ ] Upgrading a copy of each of weavereads, timestranding, and linkedin-profile leaves a `## Product context` section in `AGENTS.md`, no `STRATEGY.md`, no loomwork Cursor files, and no doctrine block, with an uncommitted diff. Timestranding's `## Deployment` and `## Auth` sections are intact.
+- [x] `git grep -nIiE '\bce-[a-z]|compound-engineering|strategy|solutions'` matches only upgrade code and instructions and their tests, `CHANGELOG.md`, and existing specs and plans.
+- [x] `hooks/strategy-gate.sh` is gone, neither hook registration references it, and `brainstorming` or `writing-plans` produces no loomwork injection on Claude Code or Codex payloads.
+- [x] The close-out and doctrine gates still pass their tests on both payload shapes, including the newline-led 192KB prompt guard, and remaining gates now cover the literal `$` requirement and the walk-up to a plain `.git` directory.
+- [x] `audit`, `close-out`, and `init` preflights require only superpowers.
+- [x] A fresh repo gets the specs and plans directories, no `docs/solutions/`, and no output about a missing strategy file.
+- [x] A repo with `docs/solutions/` content has it byte-identical after init.
+- [x] Init removes the doctrine section and markers and keeps all other content between the markers; a test covers timestranding's shape, with `## Deployment` and `## Auth` before the doctrine.
+- [x] A marker block without the doctrine heading, or with only one marker, is left unchanged and reported. A marker mentioned inline in prose is ignored.
+- [x] Init lists leftover references in every strategy file state, and skips the specs and plans directories, `docs/solutions/`, and `STRATEGY.md` itself.
+- [x] The init skill shows the draft, the dropped content, and the file to be deleted, or an existing `## Product context` section next to the file, and on a no it writes and deletes nothing.
+- [x] Init removes loomwork entries from `.cursor/hooks.json` and the two scripts, keeps non-loomwork entries and other `.cursor/` files, and deletes `hooks.json` only when nothing else remains.
+- [x] A malformed `.cursor/hooks.json` is reported and the Cursor setup is left unchanged.
+- [x] A default run never deletes the strategy file in any state.
+- [x] `--remove-strategy` deletes a tracked, clean `STRATEGY.md` without staging.
+- [x] `--remove-strategy` changes nothing and exits 1 for untracked, ignored, modified, staged, and non-git cases.
+- [x] A `strategyFile` key is reported, and neither `.loomwork.json` nor the file it names is changed.
+- [x] Running init twice produces no further changes the second time, including after a partial upgrade.
+- [x] Init never creates a commit or stages a file.
+- [x] The full test suite passes: `node --test scripts/lib/__tests__/*.test.mjs`.
+- [x] Upgrading a copy of each of weavereads, timestranding, and linkedin-profile leaves a `## Product context` section in `AGENTS.md`, no `STRATEGY.md`, no loomwork Cursor files, and no doctrine block, with an uncommitted diff. Timestranding's `## Deployment` and `## Auth` sections are intact.
