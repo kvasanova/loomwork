@@ -1,13 +1,10 @@
 ## Spec-Driven Development (loomwork)
 
-SDD lifecycle via the **loomwork** plugin — glue for **superpowers** (execution
-engine) + **compound-engineering** (`ce-strategy` → `STRATEGY.md`, `ce-compound`
-→ `docs/solutions/`, `ce-doc-review`). Doctrine: loomwork playbook
-(`references/PLAYBOOK.md` in the plugin).
+SDD lifecycle via the **loomwork** plugin, on top of **superpowers** (execution
+engine). Doctrine: loomwork playbook (`references/PLAYBOOK.md` in the plugin).
 
 - Specs in `docs/superpowers/specs/`, plans in `docs/superpowers/plans/`
-  (paths configurable via `.loomwork.json`); roadmap anchor `STRATEGY.md`;
-  learnings in `docs/solutions/`.
+  (paths configurable via `.loomwork.json`).
 - Spec frontmatter: only `issue`, `status`
   (`draft|approved|in-progress|partial|implemented|superseded`),
   `implemented_in`, `verified`. Acceptance checkboxes live in the body only.

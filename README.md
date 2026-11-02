@@ -1,29 +1,24 @@
 # loomwork
 
-**One loom, one status surface.** SDD lifecycle glue for running
-[superpowers](https://github.com/obra/superpowers) and
-[compound-engineering](https://github.com/everyinc/compound-engineering-plugin)
-in one repo without the conflict: a status-frontmatter convention, a drift
-audit, a pre-merge close-out procedure, and hook gates that enforce both.
+**One loom, one status surface.** An SDD lifecycle layer for
+[superpowers](https://github.com/obra/superpowers): a status-frontmatter
+convention, a drift audit, a pre-merge close-out procedure, and a hook gate
+that enforces it.
 
 ## Why
 
-superpowers is an execution engine with no roadmap anchor, no solved-problem
-knowledge base, and no document-review pass. compound-engineering has those,
-but a looser execution pipeline. Installed together they collide: two
-brainstorm→plan pipelines, two status surfaces that drift apart. loomwork is
-the integration doctrine as a plugin:
+superpowers is a good execution engine: brainstorm, plan, execute. It does not
+say what happens to specs and plans after the work ships. Left alone, specs
+keep saying `draft` long after merge, and plans drift away from what was built.
+loomwork adds that lifecycle as a plugin:
 
 - **One status-tracking surface.** Spec frontmatter + acceptance checkboxes
   are the only "what's built" tracker. No second tool buys a sync engine —
   only a second source of truth that drifts.
-- **Cherry-pick, don't merge.** From compound-engineering take exactly:
-  `ce-strategy` → `STRATEGY.md` (roadmap anchor), `ce-compound` →
-  `docs/solutions/` (knowledge base), `ce-doc-review` (adversarial design
-  review). Don't run `ce-brainstorm → ce-plan → ce-work` — superpowers is
-  the execution engine.
 - **Plans freeze, specs live.** A merged plan gets a DONE banner and stops
   changing; the spec stays current as the code evolves.
+- **Close out before merge.** The spec and plan updates ride the same PR as
+  the feature, so there is no follow-up PR after merge.
 
 Full doctrine: [references/PLAYBOOK.md](references/PLAYBOOK.md).
 
@@ -36,8 +31,8 @@ Full doctrine: [references/PLAYBOOK.md](references/PLAYBOOK.md).
 /plugin install loomwork
 ```
 
-Requires the superpowers and compound-engineering plugins (loomwork checks
-and tells you how to install them). Then, in each repo:
+Requires the superpowers plugin (loomwork checks and tells you how to install
+it). Then, in each repo:
 
 ```
 /loomwork:init
@@ -59,43 +54,33 @@ $loomwork:init
 Codex skips plugin-bundled hooks until you review and trust them through
 `/hooks`.
 
-Initialization scaffolds the docs layout, Cursor hook mirrors, and a
-memory-file block. If the repo has no strategy file, it points you at
-`ce-strategy` — that file belongs to `ce-strategy`, so loomwork never seeds it.
-Idempotent. Non-default
-paths: create `.loomwork.json` (keys `specsDir`, `plansDir`, `strategyFile`)
-before running init. Fresh repositories receive `AGENTS.md`; repositories with
-an existing `CLAUDE.md` remain supported and keep using it.
+Initialization scaffolds the docs layout. It also upgrades a repo set up by an
+older loomwork version: it removes the old doctrine block and the old Cursor
+hooks, and moves the useful parts of an old roadmap file into a short product
+context section. Idempotent. Non-default paths: create `.loomwork.json` (keys
+`specsDir`, `plansDir`) before running init.
 
-**Re-run `/loomwork:init` after every plugin update.** Cursor reads hooks from
-the workspace `.cursor/`, not from the plugin, so already-initialized repos
-keep running whatever hook scripts were copied in at init time. Re-running
-refreshes the scripts and migrates stale `.cursor/hooks.json` entries in place.
-
-Cursor hooks invoke the scripts as `bash .cursor/hooks/loomwork-*.sh`. On
-Windows that needs `bash` on PATH (Git Bash or MSYS) — without the explicit
-`bash`, Cursor may open the `.sh` in an editor tab instead of running it.
+**Upgrading to 0.5.0:** re-run `/loomwork:init` once in each repo. Init never
+commits; review its changes and commit them yourself.
 
 ## What ships
 
 | Piece | What it does |
 | --- | --- |
 | `loomwork:audit` skill | Drift linter: closed issues on `draft` specs, merged PRs on unbannered plans, missing/stale `verified` dates. Exit 0/1/2. Not a CI gate by design. |
-| `loomwork:close-out` skill | Pre-merge procedure: freeze the plan, verify + update the spec, and decide whether the ship changed the strategy (a yes routes to `ce-strategy`; close-out itself never writes `STRATEGY.md`) — on the feature branch, same PR. |
-| `loomwork:split-agents-md` skill | Manual-only: splits one oversized agent guidance file into a tool-agnostic `AGENTS.md` plus thin host files (`CLAUDE.md` and friends) that import or reference it, with no duplicated prose. Moves any marker-guarded block into `AGENTS.md` so init keeps finding exactly one. |
+| `loomwork:close-out` skill | Pre-merge procedure: freeze the plan and verify + update the spec — on the feature branch, same PR. |
+| `loomwork:split-agents-md` skill | Manual-only: splits one oversized agent guidance file into a tool-agnostic `AGENTS.md` plus thin host files (`CLAUDE.md` and friends) that import or reference it, with no duplicated prose. Moves any marker-guarded block into `AGENTS.md` whole, so init can still find and remove it. |
 | `loomwork:model-assignment` skill | Manual-only: right before execution, picks a model alias per task for `subagent-driven-development` implementer and reviewer dispatches. Held in the session by default; optionally written as a `**Model:**` line per task. No effect under `executing-plans`, which dispatches no subagents. |
-| Hook gates (Claude Code + Codex) | Inject STRATEGY.md when `brainstorming`/`writing-plans` starts — or, when the repo has no strategy file, a one-sentence nudge to run `ce-strategy`; inject the close-out reminder when `finishing-a-development-branch` starts. Codex observes explicit `$superpowers:...` prompts through `UserPromptSubmit`. |
-| Cursor hook templates | Same gates for Cursor (written into `.cursor/` by init — Cursor reads hooks from the workspace, so the plugin is the installer, not the runtime). Covers slash-command invocations a Skill-only hook misses. |
-| `/loomwork:init` | Idempotent scaffolder + dependency preflight. |
+| Hook gates (Claude Code + Codex) | Inject the close-out reminder when `finishing-a-development-branch` starts, and the loomwork doctrine at session start in opted-in repos. Codex observes explicit `$superpowers:...` prompts through `UserPromptSubmit`. |
+| `/loomwork:init` | Idempotent scaffolder, upgrader, and dependency preflight. |
 
 ## Compatibility
 
-Pinned upstream skill names this plugin references: `brainstorming`,
-`writing-plans`, `finishing-a-development-branch` (superpowers);
-`ce-strategy`, `ce-compound`, `ce-doc-review` (compound-engineering).
-Re-checked on upstream majors. A renamed upstream skill makes a gate
-silently stop firing — if a gate goes quiet after an upstream update, check
-these names first.
+Pinned upstream skill name this plugin's gate fires on:
+`finishing-a-development-branch` (superpowers). The init preflight also checks
+for `brainstorming` and `writing-plans`. Re-checked on upstream majors. A
+renamed upstream skill makes the gate silently stop firing — if it goes quiet
+after an upstream update, check this name first.
 
 ## Support posture
 

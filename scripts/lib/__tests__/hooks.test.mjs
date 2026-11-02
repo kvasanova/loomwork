@@ -86,6 +86,15 @@ test('doctrine-gate injects the doctrine block for a repo with docs/superpowers/
   assert.match(out.hookSpecificOutput.additionalContext, /Spec-Driven Development \(loomwork\)/);
 });
 
+test('doctrine names neither compound-engineering nor strategy', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-hook-doctrine-'));
+  fs.writeFileSync(path.join(root, '.loomwork.json'), '{}');
+  const result = runHook('doctrine-gate.sh', sessionStartEvent(root));
+  const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  assert.match(context, /Spec-Driven Development \(loomwork\)/);
+  assert.doesNotMatch(context, /compound-engineering|\bce-|STRATEGY|solutions/i);
+});
+
 test('doctrine-gate injects the live template for Codex with config opt-in', () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-codex-doctrine-')));
   fs.writeFileSync(path.join(root, '.loomwork.json'), JSON.stringify({ specsDir: 'docs/specs' }));

@@ -14,7 +14,7 @@ This repository is a portable Agent Plugins package that retains Claude-specific
 
 - `${CLAUDE_PLUGIN_ROOT}` — the plugin's own root. Claude's hook registration and `/loomwork:init` command use it; portable skills resolve their CLIs relative to the installed `SKILL.md` instead. Never hardcode an installation-specific path to `scripts/` in skill or command Markdown.
 - `CLAUDE_PROJECT_DIR` — the consumer repository root. `resolveRepoRoot()` prefers it, then walks up for `.git` or `.loomwork.json`. Set it to a disposable directory when testing `init.mjs`, and to a temporary directory in hook tests.
-- The shared gates prefer `CLAUDE_PROJECT_DIR`, then the hook payload's `.cwd`. `strategy-gate.sh` exits silently when neither resolves, so the gate never nudges from an unrelated directory. Keep that guard.
+- The shared gates prefer `CLAUDE_PROJECT_DIR`, then the hook payload's `.cwd`. The gates exit silently when neither resolves, so they never nudge from an unrelated directory. Keep that guard.
 
 ## Hook contract
 
@@ -28,6 +28,6 @@ Anything else on stdout corrupts the injection. A gate that does not apply exits
 
 ## Skills in this repository
 
-`skills/audit` and `skills/close-out` are instructions for Claude, not code — their SKILL.md frontmatter `description` is what makes the skill fire, so treat it as the trigger surface and edit it with that in mind. Both skills preflight for the superpowers and compound-engineering plugins before doing anything.
+`skills/audit` and `skills/close-out` are instructions for Claude, not code — their SKILL.md frontmatter `description` is what makes the skill fire, so treat it as the trigger surface and edit it with that in mind. Both skills preflight for the superpowers plugin before doing anything.
 
-The plugin depends on skills from those two plugins by exact name; see the pinned-names section in the imported guidelines.
+The plugin depends on superpowers skills by exact name; see the pinned-names section in the imported guidelines.
