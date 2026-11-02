@@ -4,7 +4,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initRepo, removeLegacyDoctrine } from '../../init.mjs';
+import { spawnSync } from 'node:child_process';
+import {
+  initRepo,
+  removeLegacyDoctrine,
+  classifyStrategyFile,
+  removeStrategy,
+  findLeftovers,
+} from '../../init.mjs';
 
 const PLUGIN_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -305,4 +312,180 @@ test('reports nothing on a second run', () => {
   initRepo(root);
   const second = initRepo(root);
   assert.ok(!second.some((a) => a.includes('.cursor')));
+});
+
+// ---- STRATEGY.md classification, removal, and leftovers ----
+
+const INIT_SCRIPT = path.join(PLUGIN_ROOT, 'scripts/init.mjs');
+const STRATEGY_READY = 'STRATEGY.md is ready to migrate';
+
+function git(root, ...args) {
+  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+  assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.stderr}`);
+  return result.stdout;
+}
+
+function gitRepo(files = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork init '));
+  git(root, 'init', '-q');
+  git(root, 'config', 'user.name', 'Test');
+  git(root, 'config', 'user.email', 'test@example.com');
+  git(root, 'config', 'commit.gpgsign', 'false');
+  for (const [name, content] of Object.entries(files)) {
+    const abs = path.join(root, name);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content);
+  }
+  if (Object.keys(files).length > 0) {
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'init');
+  }
+  return root;
+}
+
+const blockedRepos = {
+  untracked: [() => { const r = gitRepo({ 'a.md': 'x\n' }); fs.writeFileSync(path.join(r, 'STRATEGY.md'), 'x\n'); return r; }, 'not tracked'],
+  ignored: [() => gitRepo({ '.gitignore': 'STRATEGY.md\n', 'STRATEGY.md': 'x\n' }), 'ignored'],
+  modified: [() => { const r = gitRepo({ 'STRATEGY.md': 'x\n' }); fs.writeFileSync(path.join(r, 'STRATEGY.md'), 'y\n'); return r; }, 'uncommitted'],
+  staged: [() => { const r = gitRepo({ 'STRATEGY.md': 'x\n' }); fs.writeFileSync(path.join(r, 'STRATEGY.md'), 'y\n'); git(r, 'add', 'STRATEGY.md'); return r; }, 'uncommitted'],
+  'no git': [() => { const r = freshRepo(); fs.writeFileSync(path.join(r, 'STRATEGY.md'), 'x\n'); return r; }, 'git'],
+};
+
+test('strategy: absent file reports nothing about it', () => {
+  const root = gitRepo({ 'a.md': 'x\n' });
+  assert.deepEqual(classifyStrategyFile(root), { state: 'absent' });
+  assert.ok(!initRepo(root, PLUGIN_ROOT).some((a) => a.includes('STRATEGY.md')));
+});
+
+test('strategy: a committed clean file is ready and stays', () => {
+  const root = gitRepo({ 'STRATEGY.md': 'x\n' });
+  assert.equal(classifyStrategyFile(root).state, 'ready');
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(actions.includes(STRATEGY_READY));
+  assert.ok(fs.existsSync(path.join(root, 'STRATEGY.md')));
+});
+
+for (const [name, [setup, word]] of Object.entries(blockedRepos)) {
+  test(`strategy: ${name} is blocked and left in place`, () => {
+    const root = setup();
+    const result = classifyStrategyFile(root);
+    assert.equal(result.state, 'blocked');
+    assert.ok(result.reason.includes(word), result.reason);
+    const actions = initRepo(root, PLUGIN_ROOT);
+    assert.ok(actions.some((a) => a.startsWith('STRATEGY.md left in place:')), actions.join('|'));
+    assert.ok(!actions.includes(STRATEGY_READY));
+    const removed = removeStrategy(root);
+    assert.equal(removed.ok, false);
+    assert.ok(removed.message.startsWith('STRATEGY.md left in place:'));
+    assert.ok(fs.existsSync(path.join(root, 'STRATEGY.md')));
+  });
+}
+
+test('removeStrategy deletes a tracked clean file without staging', () => {
+  const root = gitRepo({ 'STRATEGY.md': 'x\n' });
+  assert.equal(removeStrategy(root).ok, true);
+  assert.ok(!fs.existsSync(path.join(root, 'STRATEGY.md')));
+  assert.equal(git(root, 'diff', '--cached', '--name-only').trim(), '');
+  assert.equal(git(root, 'log', '--oneline').trim().split('\n').length, 1);
+});
+
+test('removeStrategy succeeds when the file is absent', () => {
+  assert.equal(removeStrategy(gitRepo({ 'a.md': 'x\n' })).ok, true);
+});
+
+test('removeStrategy leaves an empty .loomwork.json in place', () => {
+  const root = gitRepo({ 'STRATEGY.md': 'x\n', '.loomwork.json': '{}' });
+  assert.equal(removeStrategy(root).ok, true);
+  assert.equal(fs.readFileSync(path.join(root, '.loomwork.json'), 'utf8'), '{}');
+});
+
+function runCli(root, ...args) {
+  return spawnSync('node', [INIT_SCRIPT, ...args], {
+    env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+    encoding: 'utf8',
+  });
+}
+
+test('CLI --remove-strategy exits 1 with the reason on a modified file', () => {
+  const root = blockedRepos.modified[0]();
+  const result = runCli(root, '--remove-strategy');
+  assert.equal(result.status, 1);
+  assert.ok((result.stdout + result.stderr).includes('uncommitted'));
+  assert.ok(fs.existsSync(path.join(root, 'STRATEGY.md')));
+});
+
+test('CLI --remove-strategy exits 0 and removes a clean file', () => {
+  const root = gitRepo({ 'STRATEGY.md': 'x\n' });
+  const result = runCli(root, '--remove-strategy');
+  assert.equal(result.status, 0);
+  assert.ok(!fs.existsSync(path.join(root, 'STRATEGY.md')));
+});
+
+test('CLI plain run on a ready file exits 0 and keeps it', () => {
+  const root = gitRepo({ 'STRATEGY.md': 'x\n' });
+  const result = runCli(root);
+  assert.equal(result.status, 0);
+  assert.ok(result.stdout.includes(STRATEGY_READY));
+  assert.ok(fs.existsSync(path.join(root, 'STRATEGY.md')));
+});
+
+test('a strategyFile key is reported and nothing it names is touched', () => {
+  const config = JSON.stringify({ strategyFile: 'VISION.md' });
+  const root = gitRepo({ 'VISION.md': 'v\n', '.loomwork.json': config });
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(actions.includes('strategyFile in .loomwork.json is no longer used; VISION.md was left alone'));
+  assert.equal(fs.readFileSync(path.join(root, 'VISION.md'), 'utf8'), 'v\n');
+  assert.equal(fs.readFileSync(path.join(root, '.loomwork.json'), 'utf8'), config);
+});
+
+test('findLeftovers lists only live docs outside specs, plans, solutions, and STRATEGY.md', () => {
+  const files = {
+    'docs/SDD_PLAYBOOK.md': 'see ce-strategy\n',
+    'README.md': 'uses compound-engineering\n',
+    'docs/superpowers/specs/a.md': 'ce-strategy\n',
+    'docs/superpowers/plans/a.md': 'ce-strategy\n',
+    'docs/solutions/a.md': 'ce-strategy\n',
+    'STRATEGY.md': 'ce-strategy\n',
+  };
+  const root = gitRepo(files);
+  assert.deepEqual(findLeftovers(root, { specsDir: 'docs/superpowers/specs', plansDir: 'docs/superpowers/plans' }), [
+    'README.md',
+    'docs/SDD_PLAYBOOK.md',
+  ]);
+  const actions = initRepo(root, PLUGIN_ROOT);
+  assert.ok(actions.includes('references to the old setup remain in: README.md, docs/SDD_PLAYBOOK.md'));
+});
+
+test('findLeftovers honors custom specsDir and plansDir', () => {
+  const root = gitRepo({ 'specs/a.md': 'ce-strategy\n', 'plans/a.md': 'ce-strategy\n', 'notes.md': 'ce-compound\n' });
+  assert.deepEqual(findLeftovers(root, { specsDir: 'specs', plansDir: 'plans' }), ['notes.md']);
+});
+
+test('findLeftovers returns [] without git or without matches', () => {
+  const cfg = { specsDir: 'docs/superpowers/specs', plansDir: 'docs/superpowers/plans' };
+  assert.deepEqual(findLeftovers(freshRepo(), cfg), []);
+  assert.deepEqual(findLeftovers(gitRepo({ 'a.md': 'clean\n' }), cfg), []);
+});
+
+test('leftovers are reported when STRATEGY.md is absent, ready, or blocked', () => {
+  const expected = 'references to the old setup remain in: README.md';
+  const absent = gitRepo({ 'README.md': 'compound-engineering\n' });
+  const ready = gitRepo({ 'README.md': 'compound-engineering\n', 'STRATEGY.md': 'x\n' });
+  const blocked = gitRepo({ 'README.md': 'compound-engineering\n', 'STRATEGY.md': 'x\n' });
+  fs.writeFileSync(path.join(blocked, 'STRATEGY.md'), 'y\n');
+  for (const root of [absent, ready, blocked]) {
+    assert.ok(initRepo(root, PLUGIN_ROOT).includes(expected));
+  }
+});
+
+test('a second default run repeats the actions and changes nothing', () => {
+  const root = gitRepo({ 'STRATEGY.md': 'x\n', 'README.md': 'compound-engineering\n' });
+  initRepo(root, PLUGIN_ROOT);
+  const before = git(root, 'status', '--porcelain');
+  const first = initRepo(root, PLUGIN_ROOT);
+  const second = initRepo(root, PLUGIN_ROOT);
+  assert.deepEqual(second, first);
+  assert.equal(git(root, 'status', '--porcelain'), before);
+  assert.equal(git(root, 'diff', '--cached', '--name-only').trim(), '');
+  assert.equal(git(root, 'log', '--oneline').trim().split('\n').length, 1);
 });
