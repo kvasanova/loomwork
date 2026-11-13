@@ -28,7 +28,7 @@ Loomwork enforces one convention: **specs live, plans freeze.**
 
 - A **spec** (`docs/superpowers/specs/YYYY-MM-DD-slug-design.md`) carries frontmatter `issue`, `status` (`draft|approved|in-progress|partial|implemented|superseded`), `implemented_in`, and `verified`, plus acceptance checkboxes in the body. It stays current as the code evolves.
 - A **plan** (`docs/superpowers/plans/YYYY-MM-DD-slug.md`) gets a `> **Status: DONE` banner at merge and never changes again.
-- Plan-to-spec pairing is **filename-slug-based only**: `pair.mjs` strips the date prefix and the `-design` suffix. There is no explicit link field, so renaming either file silently breaks pairing.
+- Plan-to-spec pairing is **filename-slug-based only**: `slugFromBasename()` in `parse.mjs` strips the date prefix and the `-design` suffix, and `pair.mjs` matches plans to specs on the result. There is no explicit link field, so renaming either file silently breaks pairing.
 
 The audit pipeline is a straight line: `config → parse → pair → rules → report`. `rules.mjs` is pure — it takes already-read specs and plans plus a `githubState` map — so drift rules are unit-testable without filesystem or network access. Keep it that way: put I/O in `parse.mjs` and `github.mjs`, decisions in `rules.mjs`.
 

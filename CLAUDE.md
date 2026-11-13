@@ -18,16 +18,16 @@ This repository is a portable Agent Plugins package that retains Claude-specific
 
 ## Hook contract
 
-Gates run on `PostToolUse` with matcher `Skill` and emit a single JSON object on stdout:
+Each gate emits a single JSON object on stdout, echoing the incoming event name: `PostToolUse` for the close-out gate (matcher `Skill`), `SessionStart` for the doctrine gate.
 
 ```json
-{ "hookSpecificOutput": { "hookEventName": "PostToolUse", "additionalContext": "..." } }
+{ "hookSpecificOutput": { "hookEventName": "<incoming event>", "additionalContext": "..." } }
 ```
 
 Anything else on stdout corrupts the injection. A gate that does not apply exits 0 with no output.
 
 ## Skills in this repository
 
-`skills/audit` and `skills/close-out` are instructions for Claude, not code — their SKILL.md frontmatter `description` is what makes the skill fire, so treat it as the trigger surface and edit it with that in mind. Both skills preflight for the superpowers plugin before doing anything.
+The skills under `skills/` are instructions for Claude, not code — a SKILL.md frontmatter `description` is what makes the skill fire, so treat it as the trigger surface and edit it with that in mind (`model-assignment` and `split-agents-md` set `disable-model-invocation` and run only when invoked by name). `audit`, `close-out`, and `init` preflight for the superpowers plugin before doing anything.
 
 The plugin depends on superpowers skills by exact name; see the pinned-names section in the imported guidelines.
