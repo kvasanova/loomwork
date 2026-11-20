@@ -5,6 +5,17 @@ All notable changes to loomwork are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-11-20
+
+### Fixed
+
+- **The close-out gate runs in Claude Code again.** `hooks/close-out-gate.sh`
+  was committed without the exec bit, so Claude Code failed with exit 126
+  (`Permission denied`) after every Skill call and never injected the
+  close-out reminder. `hooks/hooks.json` now invokes both gates through
+  `bash`, as the Codex registration already did, so they run whatever file
+  mode an install leaves behind. The script also carries the exec bit again (#26).
+
 ## [0.5.0] - 2026-11-02
 
 Loomwork is now an SDD lifecycle layer on top of superpowers alone. After

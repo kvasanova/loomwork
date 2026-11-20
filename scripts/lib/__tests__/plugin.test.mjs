@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -119,8 +121,49 @@ test('Claude hooks register only the close-out gate on Skill', () => {
   const groups = readJson('hooks/hooks.json').hooks.PostToolUse;
   assert.deepEqual(
     groups[0].hooks.map((hook) => hook.command),
-    ['${CLAUDE_PLUGIN_ROOT}/hooks/close-out-gate.sh'],
+    ['bash "${CLAUDE_PLUGIN_ROOT}/hooks/close-out-gate.sh"'],
   );
+});
+
+// Claude Code runs each hooks.json command through /bin/sh. Invoking the gate
+// through bash keeps it working when an install drops the exec bit (#26).
+const CLAUDE_HOOKS = Object.entries(readJson('hooks/hooks.json').hooks)
+  .flatMap(([event, groups]) => groups.flatMap((group) => group.hooks.map(({ command }) => ({ event, command }))));
+
+test('every hook registration invokes its gate through bash, not by bare path', () => {
+  for (const file of ['hooks/hooks.json', 'hooks/codex-hooks.json']) {
+    const commands = Object.values(readJson(file).hooks).flat().flatMap((group) => group.hooks.map((hook) => hook.command));
+    assert.ok(commands.length > 0, `expected at least one hook in ${file}`);
+    for (const command of commands) {
+      assert.match(command, /^bash "\$\{(CLAUDE_)?PLUGIN_ROOT\}\/hooks\/[a-z-]+\.sh"$/, `${file}: ${command}`);
+    }
+  }
+});
+
+test('every Claude hook command runs through /bin/sh even when the gate lacks the exec bit', (t) => {
+  const pluginRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-plugin-root-'));
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-plugin-'));
+  t.after(() => {
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  });
+  fs.cpSync(path.join(ROOT, 'hooks'), path.join(pluginRoot, 'hooks'), { recursive: true });
+  for (const entry of fs.readdirSync(path.join(pluginRoot, 'hooks'), { recursive: true })) {
+    if (entry.endsWith('.sh')) fs.chmodSync(path.join(pluginRoot, 'hooks', entry), 0o644);
+  }
+  for (const { event, command } of CLAUDE_HOOKS) {
+    // An unrelated skill, in a repo with no loomwork markers: each gate must run and stay silent.
+    const payload = event === 'SessionStart'
+      ? { hook_event_name: event, source: 'startup' }
+      : { hook_event_name: event, tool_name: 'Skill', tool_input: { skill: 'superpowers:brainstorming' } };
+    const result = spawnSync('/bin/sh', ['-c', command], {
+      input: JSON.stringify(payload),
+      encoding: 'utf8',
+      env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, CLAUDE_PROJECT_DIR: projectDir },
+    });
+    assert.equal(result.status, 0, `${command} exited ${result.status}: ${result.stderr}`);
+    assert.equal(result.stdout.trim(), '', `${command} printed output for an unrelated ${event} event`);
+  }
 });
 
 test('no hook registration mentions strategy', () => {
