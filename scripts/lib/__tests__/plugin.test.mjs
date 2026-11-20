@@ -130,10 +130,13 @@ test('Claude hooks register only the close-out gate on Skill', () => {
 const CLAUDE_HOOKS = Object.entries(readJson('hooks/hooks.json').hooks)
   .flatMap(([event, groups]) => groups.flatMap((group) => group.hooks.map(({ command }) => ({ event, command }))));
 
-test('every Claude hook command invokes its gate through bash, not by bare path', () => {
-  assert.ok(CLAUDE_HOOKS.length > 0, 'expected at least one Claude hook');
-  for (const { command } of CLAUDE_HOOKS) {
-    assert.match(command, /^bash "\$\{CLAUDE_PLUGIN_ROOT\}\/hooks\/[a-z-]+\.sh"$/);
+test('every hook registration invokes its gate through bash, not by bare path', () => {
+  for (const file of ['hooks/hooks.json', 'hooks/codex-hooks.json']) {
+    const commands = Object.values(readJson(file).hooks).flat().flatMap((group) => group.hooks.map((hook) => hook.command));
+    assert.ok(commands.length > 0, `expected at least one hook in ${file}`);
+    for (const command of commands) {
+      assert.match(command, /^bash "\$\{(CLAUDE_)?PLUGIN_ROOT\}\/hooks\/[a-z-]+\.sh"$/, `${file}: ${command}`);
+    }
   }
 });
 
@@ -145,14 +148,14 @@ test('every Claude hook command runs through /bin/sh even when the gate lacks th
     fs.rmSync(projectDir, { recursive: true, force: true });
   });
   fs.cpSync(path.join(ROOT, 'hooks'), path.join(pluginRoot, 'hooks'), { recursive: true });
-  for (const dir of ['hooks', 'hooks/lib']) {
-    for (const entry of fs.readdirSync(path.join(pluginRoot, dir)).filter((name) => name.endsWith('.sh'))) {
-      fs.chmodSync(path.join(pluginRoot, dir, entry), 0o644);
-    }
+  for (const entry of fs.readdirSync(path.join(pluginRoot, 'hooks'), { recursive: true })) {
+    if (entry.endsWith('.sh')) fs.chmodSync(path.join(pluginRoot, 'hooks', entry), 0o644);
   }
   for (const { event, command } of CLAUDE_HOOKS) {
     // An unrelated skill, in a repo with no loomwork markers: each gate must run and stay silent.
-    const payload = { hook_event_name: event, source: 'startup', tool_name: 'Skill', tool_input: { skill: 'superpowers:brainstorming' } };
+    const payload = event === 'SessionStart'
+      ? { hook_event_name: event, source: 'startup' }
+      : { hook_event_name: event, tool_name: 'Skill', tool_input: { skill: 'superpowers:brainstorming' } };
     const result = spawnSync('/bin/sh', ['-c', command], {
       input: JSON.stringify(payload),
       encoding: 'utf8',
