@@ -121,51 +121,45 @@ test('Claude hooks register only the close-out gate on Skill', () => {
   const groups = readJson('hooks/hooks.json').hooks.PostToolUse;
   assert.deepEqual(
     groups[0].hooks.map((hook) => hook.command),
-    ['${CLAUDE_PLUGIN_ROOT}/hooks/close-out-gate.sh'],
+    ['bash "${CLAUDE_PLUGIN_ROOT}/hooks/close-out-gate.sh"'],
   );
 });
 
-// Claude Code runs a hooks.json command through /bin/sh, so a bare script path
-// needs the exec bit; without it every Skill call fails with exit 126 (#26).
-function bareClaudeHookScripts() {
-  const { hooks } = readJson('hooks/hooks.json');
-  const prefix = '${CLAUDE_PLUGIN_ROOT}/';
-  return Object.values(hooks)
-    .flat()
-    .flatMap((group) => group.hooks)
-    .map((hook) => hook.command)
-    .filter((command) => command.startsWith(prefix))
-    .map((command) => command.slice(prefix.length));
-}
+// Claude Code runs each hooks.json command through /bin/sh. Invoking the gate
+// through bash keeps it working when an install drops the exec bit (#26).
+const CLAUDE_HOOKS = Object.entries(readJson('hooks/hooks.json').hooks)
+  .flatMap(([event, groups]) => groups.flatMap((group) => group.hooks.map(({ command }) => ({ event, command }))));
 
-test('every script registered by bare path in hooks.json is executable in the git index', (t) => {
-  const scripts = bareClaudeHookScripts();
-  assert.ok(scripts.length > 0, 'expected at least one bare-path registration');
-  const listed = spawnSync('git', ['ls-files', '-s', '--', ...scripts], { cwd: ROOT, encoding: 'utf8' });
-  if (listed.status !== 0) {
-    t.skip('not a git checkout');
-    return;
-  }
-  const modes = new Map(
-    listed.stdout.trim().split('\n').filter(Boolean).map((line) => {
-      const [mode] = line.split(/\s/);
-      return [line.split('\t')[1], mode];
-    }),
-  );
-  for (const script of scripts) {
-    assert.equal(modes.get(script), '100755', `${script} must be committed as 100755`);
+test('every Claude hook command invokes its gate through bash, not by bare path', () => {
+  assert.ok(CLAUDE_HOOKS.length > 0, 'expected at least one Claude hook');
+  for (const { command } of CLAUDE_HOOKS) {
+    assert.match(command, /^bash "\$\{CLAUDE_PLUGIN_ROOT\}\/hooks\/[a-z-]+\.sh"$/);
   }
 });
 
-test('every bare-path hooks.json command runs through /bin/sh as Claude Code invokes it', () => {
-  for (const script of bareClaudeHookScripts()) {
-    const result = spawnSync('/bin/sh', ['-c', `"\$CLAUDE_PLUGIN_ROOT/${script}"`], {
-      input: JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: 'Skill', tool_input: { skill: 'superpowers:brainstorming' } }),
+test('every Claude hook command runs through /bin/sh even when the gate lacks the exec bit', (t) => {
+  const pluginRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-plugin-root-'));
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-plugin-'));
+  t.after(() => {
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  });
+  fs.cpSync(path.join(ROOT, 'hooks'), path.join(pluginRoot, 'hooks'), { recursive: true });
+  for (const dir of ['hooks', 'hooks/lib']) {
+    for (const entry of fs.readdirSync(path.join(pluginRoot, dir)).filter((name) => name.endsWith('.sh'))) {
+      fs.chmodSync(path.join(pluginRoot, dir, entry), 0o644);
+    }
+  }
+  for (const { event, command } of CLAUDE_HOOKS) {
+    // An unrelated skill, in a repo with no loomwork markers: each gate must run and stay silent.
+    const payload = { hook_event_name: event, source: 'startup', tool_name: 'Skill', tool_input: { skill: 'superpowers:brainstorming' } };
+    const result = spawnSync('/bin/sh', ['-c', command], {
+      input: JSON.stringify(payload),
       encoding: 'utf8',
-      env: { ...process.env, CLAUDE_PLUGIN_ROOT: ROOT, CLAUDE_PROJECT_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-plugin-')) },
+      env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, CLAUDE_PROJECT_DIR: projectDir },
     });
-    assert.equal(result.status, 0, `${script} exited ${result.status}: ${result.stderr}`);
-    assert.equal(result.stdout.trim(), '', `${script} printed output for an unrelated skill`);
+    assert.equal(result.status, 0, `${command} exited ${result.status}: ${result.stderr}`);
+    assert.equal(result.stdout.trim(), '', `${command} printed output for an unrelated ${event} event`);
   }
 });
 

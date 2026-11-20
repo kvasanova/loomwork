@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The close-out gate runs in Claude Code again.** `hooks/close-out-gate.sh`
   was committed without the exec bit, so Claude Code failed with exit 126
   (`Permission denied`) after every Skill call and never injected the
-  close-out reminder. A test now fails when a script registered by bare path in
-  `hooks/hooks.json` is not executable (#26).
+  close-out reminder. `hooks/hooks.json` now invokes both gates through
+  `bash`, as the Codex registration already did, so they run whatever file
+  mode an install leaves behind. The script also carries the exec bit again (#26).
 
 ## [0.5.0] - 2026-11-02
 
