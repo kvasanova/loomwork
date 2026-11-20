@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "loomwork",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "SDD lifecycle for superpowers: status-frontmatter convention, drift audit, pre-merge close-out, and a close-out hook gate. One loom, one status surface.",
   "author": {
     "name": "Pavlo Kvas"

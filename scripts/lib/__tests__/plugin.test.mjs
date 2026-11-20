@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -121,6 +123,50 @@ test('Claude hooks register only the close-out gate on Skill', () => {
     groups[0].hooks.map((hook) => hook.command),
     ['${CLAUDE_PLUGIN_ROOT}/hooks/close-out-gate.sh'],
   );
+});
+
+// Claude Code runs a hooks.json command through /bin/sh, so a bare script path
+// needs the exec bit; without it every Skill call fails with exit 126 (#26).
+function bareClaudeHookScripts() {
+  const { hooks } = readJson('hooks/hooks.json');
+  const prefix = '${CLAUDE_PLUGIN_ROOT}/';
+  return Object.values(hooks)
+    .flat()
+    .flatMap((group) => group.hooks)
+    .map((hook) => hook.command)
+    .filter((command) => command.startsWith(prefix))
+    .map((command) => command.slice(prefix.length));
+}
+
+test('every script registered by bare path in hooks.json is executable in the git index', (t) => {
+  const scripts = bareClaudeHookScripts();
+  assert.ok(scripts.length > 0, 'expected at least one bare-path registration');
+  const listed = spawnSync('git', ['ls-files', '-s', '--', ...scripts], { cwd: ROOT, encoding: 'utf8' });
+  if (listed.status !== 0) {
+    t.skip('not a git checkout');
+    return;
+  }
+  const modes = new Map(
+    listed.stdout.trim().split('\n').filter(Boolean).map((line) => {
+      const [mode] = line.split(/\s/);
+      return [line.split('\t')[1], mode];
+    }),
+  );
+  for (const script of scripts) {
+    assert.equal(modes.get(script), '100755', `${script} must be committed as 100755`);
+  }
+});
+
+test('every bare-path hooks.json command runs through /bin/sh as Claude Code invokes it', () => {
+  for (const script of bareClaudeHookScripts()) {
+    const result = spawnSync('/bin/sh', ['-c', `"\$CLAUDE_PLUGIN_ROOT/${script}"`], {
+      input: JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: 'Skill', tool_input: { skill: 'superpowers:brainstorming' } }),
+      encoding: 'utf8',
+      env: { ...process.env, CLAUDE_PLUGIN_ROOT: ROOT, CLAUDE_PROJECT_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'loomwork-plugin-')) },
+    });
+    assert.equal(result.status, 0, `${script} exited ${result.status}: ${result.stderr}`);
+    assert.equal(result.stdout.trim(), '', `${script} printed output for an unrelated skill`);
+  }
 });
 
 test('no hook registration mentions strategy', () => {
